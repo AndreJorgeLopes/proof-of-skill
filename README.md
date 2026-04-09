@@ -2,7 +2,9 @@
 
 # proof-of-skill
 
-**Test-Driven Development for AI agent skills. Write a failing test. Build the minimal skill. Prove it works -- or don't ship it.**
+<img src="docs/images/title.png" alt="proof-of-skill: tested, measured, validated" width="700" />
+
+**Test-Driven Development for AI agent skills. Write a failing test. Build the minimal skill. Prove it works, or don't ship it.**
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 [![Claude Code](https://img.shields.io/badge/Claude_Code-Skills-7c3aed.svg)](skills/)
@@ -18,7 +20,7 @@
 
 <div align="center">
 
-<img src="docs/images/capability-space.png" alt="The Capability Space Problem -- generic prompts cluster at the center while tested skills reach rare, high-value regions" width="800" />
+<img src="docs/images/capability-space.png" alt="The Capability Space Problem: generic prompts cluster at the center while tested skills reach rare, high-value regions" width="800" />
 
 </div>
 
@@ -28,27 +30,45 @@ AI agents are only as good as their skills. And most skills are untested.
 
 An agent writes a SKILL.md. The author reads it, thinks "looks reasonable," and ships it. But a skill that *looks* reasonable and a skill that *performs* well are two different things. A code review skill with a perfect static review score can still produce generic checklists that add zero value in practice.
 
-Without empirical testing, skills silently degrade. They drift. They rationalize their way past constraints. And nobody notices -- because there is no baseline to compare against.
+Without empirical testing, skills silently degrade. They drift. They rationalize their way past constraints. And nobody notices, because there is no baseline to compare against.
 
 We ran the numbers. Across 6 pressure scenarios, agents without tested skills performed at **2-7% of their potential**. Not 50%. Not 30%. Single digits.
 
 ## The Solution
 
-proof-of-skill applies the most battle-tested quality methodology in software engineering -- Test-Driven Development -- to AI agent skills. Write pressure scenarios first. Run them without the skill to document baseline failures. Then write the minimal skill that addresses those specific failures. Every skill is validated empirically against measurable criteria, not subjective review.
+proof-of-skill applies the most battle-tested quality methodology in software engineering, Test-Driven Development, to AI agent skills. Write pressure scenarios first. Run them without the skill to document baseline failures. Then write the minimal skill that addresses those specific failures. Every skill is validated empirically against measurable criteria, not subjective review.
 
 The difference is not incremental. It is categorical: **2-7% baseline to 86%+ validated.**
 
+---
+
+## Quick Start
+
+```bash
+git clone https://github.com/AndreJorgeLopes/proof-of-skill.git && cd proof-of-skill && ln -sf "$(pwd)"/skills/*/ ~/.claude/skills/
+```
+
+Then create your first tested skill:
+
+```
+/create-skill
+```
+
+That's it. The command walks you through the full TDD cycle: interview, discovery, baseline, writing, evaluation. No configuration needed.
+
+---
+
 ## What Makes It Different
 
-- **Baseline-first, always** -- You must watch the agent fail before you write the fix. No baseline, no skill. This eliminates the most dangerous failure mode in skill engineering: writing skills that address imagined problems instead of observed ones.
+- **Baseline-first, always.** You must watch the agent fail before you write the fix. No baseline, no skill. This eliminates the most dangerous failure mode in skill engineering: writing skills that address imagined problems instead of observed ones.
 
-- **Empirical validation over review scores** -- A static review score tells you the skill *reads* well. An empirical eval tells you it *works*. The `/create-skill` workflow scored 86% on tessl eval -- after the baseline showed agents performing at 2-7% without it.
+- **Empirical validation over review scores.** A static review score tells you the skill *reads* well. An empirical eval tells you it *works*. The `/create-skill` workflow scored 86% on tessl eval, after the baseline showed agents performing at 2-7% without it.
 
-- **Capability space navigation** -- Generic prompts land in the densely populated center of the model's output distribution -- average, predictable, same as every other model. proof-of-skill uses persona stacking, constraint chaining, and rationalization counters to navigate to rare, high-value regions that generic prompts never reach.
+- **Capability space navigation.** Generic prompts land in the densely populated center of the model's output distribution: average, predictable, same as every other model. proof-of-skill uses persona stacking, constraint chaining, and rationalization counters to navigate to rare, high-value regions that generic prompts never reach.
 
-- **Rationalization detection** -- Agents follow a predictable shortcut chain: *"User asked" --> "I know this" --> "Found the format" --> "I'll be comprehensive" --> "Done."* Each step feels reasonable. The chain skips every quality gate. proof-of-skill documents these chains and builds explicit counters into every skill.
+- **Rationalization detection.** Agents follow a predictable shortcut chain: *"User asked" > "I know this" > "Found the format" > "I'll be comprehensive" > "Done."* Each step feels reasonable. The chain skips every quality gate. proof-of-skill documents these chains and builds explicit counters into every skill.
 
-- **Self-healing monitoring** (v1.0) -- Skills that detect their own degradation through p95 sampling and trigger automatic optimization loops. Not tested once -- continuously validated.
+- **Self-healing monitoring** (v1.0). Skills that detect their own degradation through p95 sampling and trigger automatic optimization loops. Not tested once: continuously validated.
 
 ---
 
@@ -56,11 +76,11 @@ The difference is not incremental. It is categorical: **2-7% baseline to 86%+ va
 
 <div align="center">
 
-<img src="docs/images/before-after.png" alt="Before and After proof-of-skill -- the rationalization chain vs enforced quality gates" width="800" />
+<img src="docs/images/before-after.png" alt="Before and After proof-of-skill: the rationalization chain vs enforced quality gates" width="800" />
 
 </div>
 
-We ran 3 pressure scenarios against a naive agent -- no skill loaded, no guidance, just the raw request. Then ran the same scenarios with `/create-skill` loaded.
+We ran 3 pressure scenarios against a naive agent: no skill loaded, no guidance, just the raw request. Then ran the same scenarios with `/create-skill` loaded.
 
 ### Without proof-of-skill (baseline)
 
@@ -70,7 +90,7 @@ We ran 3 pressure scenarios against a naive agent -- no skill loaded, no guidanc
 | Multi-concern (DB + Slack + Jira in one skill) | 0% | 0% | 0% | 0% | 0% | **~2%** |
 | Existing overlap (skill that already exists) | 0% | 0% | 0% | 0% | 0% | **~2%** |
 
-**What happened:** The agent skipped the interview every time. Skipped discovery -- missing that `superpowers:writing-plans` already exists as a full-featured skill. Wrote generic checklists. Shipped untested output. Three for three.
+**What happened:** The agent skipped the interview every time. Skipped discovery, missing that `superpowers:writing-plans` already exists as a full-featured skill. Wrote generic checklists. Shipped untested output. Three for three.
 
 ### The Rationalization Chain
 
@@ -78,10 +98,10 @@ Every scenario followed the same predictable shortcut pattern:
 
 ```
 "User asked me to create X"
-  --> "I know what X is"
-    --> "I found the file format"
-      --> "I'll make it comprehensive to compensate"
-        --> "Done."
+  > "I know what X is"
+    > "I found the file format"
+      > "I'll make it comprehensive to compensate"
+        > "Done."
 ```
 
 Each step *feels* reasonable. The chain skips: clarifying what the user actually needs (interview), checking what already exists (discovery), testing whether the output works (TDD), measuring quality (eval), and improving based on evidence (iteration).
@@ -105,7 +125,7 @@ Every gate is mandatory. Rationalizations are documented and countered. The skil
 
 ### The RED-GREEN-REFACTOR Cycle for Skills
 
-The same discipline that changed software engineering -- applied to AI skill creation.
+The same discipline that changed software engineering, applied to AI skill creation.
 
 ```mermaid
 flowchart LR
@@ -178,7 +198,7 @@ flowchart TD
 
 This is the core insight behind proof-of-skill.
 
-LLMs have a vast capability space -- the full range of outputs they can produce for any given input. When you send a generic prompt like "review this code," the model navigates to the **densely populated center** of that space. The output is average, predictable, and indistinguishable from what any other model would produce. We call this the "generic center."
+LLMs have a vast capability space: the full range of outputs they can produce for any given input. When you send a generic prompt like "review this code," the model navigates to the **densely populated center** of that space. The output is average, predictable, and indistinguishable from what any other model would produce. We call this the "generic center."
 
 proof-of-skill uses three techniques to navigate away from the center and into **rare, high-value regions** where the genuinely useful output lives:
 
@@ -222,36 +242,17 @@ graph TD
 
 **Constraint chaining** layers successive constraints, each one narrowing the space further. "Interview first" + "search before create" + "baseline before writing" + "eval before shipping" creates a path that no generic prompt would follow.
 
-**Rationalization counters** prevent drift back to the center. When an agent thinks "It's straightforward, no need to test," that thought is a documented rationalization with an explicit counter: "Simple skills have hidden edge cases. Test anyway." The counters are built from observed baseline behavior -- real rationalizations from real failures.
+**Rationalization counters** prevent drift back to the center. When an agent thinks "It's straightforward, no need to test," that thought is a documented rationalization with an explicit counter: "Simple skills have hidden edge cases. Test anyway." The counters are built from observed baseline behavior, real rationalizations from real failures.
 
 The difference between a 7% baseline and an 86% evaluated skill is not incremental improvement. It is the distance between the generic center and precise coordinates.
 
 ---
 
-## Quick Start
-
-```bash
-# Clone
-git clone https://github.com/AndreJorgeLopes/proof-of-skill.git
-cd proof-of-skill
-
-# Symlink skills into Claude Code
-ln -sf "$(pwd)/skills/create-skill" ~/.claude/skills/create-skill
-ln -sf "$(pwd)/skills/write-spike" ~/.claude/skills/write-spike
-
-# Create your first tested skill
-/create-skill
-```
-
-That's it. `/create-skill` walks you through the full TDD cycle -- interview, discovery, baseline, writing, evaluation. No configuration needed.
-
----
-
 ## Skills
 
-### `/create-skill` -- TDD Skill Creation
+### `/create-skill`: TDD Skill Creation
 
-Creates a new skill through a structured TDD process. Enforces interview, discovery, baseline testing, empirical validation, and iteration. Every box in the pipeline is mandatory -- skip one, start over.
+Creates a new skill through a structured TDD process. Enforces interview, discovery, baseline testing, empirical validation, and iteration. Every box in the pipeline is mandatory. Skip one, start over.
 
 ```
 /create-skill                              # starts interview
@@ -269,7 +270,7 @@ Creates a new skill through a structured TDD process. Enforces interview, discov
 | GREEN | Minimal SKILL.md, verify all pass | Targeted fixes (agent writes generic checklists) |
 | REFACTOR | tessl eval >= 85% | Empirical quality (agent ships at 7%) |
 
-### `/write-spike` -- Technical Investigation
+### `/write-spike`: Technical Investigation
 
 Conducts a 4-phase technical investigation producing both a spike document and a private notes file. Pulls context from Jira, Slack, Hindsight, and the codebase in parallel before engaging the user.
 
@@ -304,14 +305,14 @@ flowchart LR
 | **4. Validation** | Self-review, grill-me stress test, B1 investigation execution, retain learnings to Hindsight. | Validated, stress-tested document |
 
 **What it produces:**
-- **Spike document** -- Structured investigation with architecture diagrams, knowledge classification (Known/Can-Investigate/Need-Others), effort estimates, cross-team dependencies, testing strategy, and phasing
-- **Private notes** (dot-prefixed) -- Delegation guide, contact confidence table, low-confidence assumptions, things to discuss with manager
+- **Spike document.** Structured investigation with architecture diagrams, knowledge classification (Known/Can-Investigate/Need-Others), effort estimates, cross-team dependencies, testing strategy, and phasing.
+- **Private notes** (dot-prefixed). Delegation guide, contact confidence table, low-confidence assumptions, things to discuss with manager.
 
 ---
 
 ## Eval Suite
 
-The eval suite uses pressure scenarios designed to expose specific failure modes. Each scenario combines multiple pressures -- vague input + familiar domain, existing overlap + complex scope, minimal input + real production data.
+The eval suite uses pressure scenarios designed to expose specific failure modes. Each scenario combines multiple pressures: vague input + familiar domain, existing overlap + complex scope, minimal input + real production data.
 
 ### Create-Skill Pressure Scenarios
 
@@ -344,7 +345,7 @@ tessl eval run --all
 
 ### Baseline Quality Scores
 
-Measured across all create-skill scenarios. These are the GREEN phase targets -- any score above baseline demonstrates the skill adds value.
+Measured across all create-skill scenarios. These are the GREEN phase targets; any score above baseline demonstrates the skill adds value.
 
 | Scenario | Interview | Discovery | TDD | Eval | Iteration | Specificity | Overall |
 |----------|:---------:|:---------:|:---:|:----:|:---------:|:-----------:|:-------:|
@@ -421,8 +422,8 @@ See `tasks/` for the full v1.0 roadmap as Nimbalist task files with detailed imp
 
 | Priority | Feature | Description | Status |
 |:--------:|---------|-------------|:------:|
-| -- | `/create-skill` | TDD skill creation with empirical validation | **Shipped** |
-| -- | `/write-spike` | 4-phase technical investigation framework | **Shipped** |
+| | `/create-skill` | TDD skill creation with empirical validation | **Shipped** |
+| | `/write-spike` | 4-phase technical investigation framework | **Shipped** |
 | **P1** | `/monitor-skill` | Register existing skills for p95 quality sampling | Planned |
 | **P1** | p95 hooks | Shell hooks that sample 1-in-N invocations, run tessl eval | Planned |
 | **P1** | SQLite metrics store | `~/.proof-of-skill/metrics.db` for trend analysis | Planned |
@@ -455,23 +456,15 @@ proof-of-skill/
 │   │   ├── write-spike-scenarios.md       # 3 pressure scenarios
 │   │   └── write-spike-baseline.md        # RED phase baseline failures
 │   └── images/
-│       ├── capability-space.excalidraw.json
-│       └── before-after.excalidraw.json
+│       ├── title.png                      # Project title banner
+│       ├── capability-space.png           # Capability space concept
+│       ├── before-after.png               # Before/after comparison
+│       └── *.excalidraw.json              # Editable diagram sources
 │
 └── tasks/                                 # v1.0 roadmap (10 Nimbalist task files)
     ├── P1/                                # MVP completion (4 tasks)
-    │   ├── DOCS-readme.md
-    │   ├── FEAT-monitor-skill.md
-    │   ├── FEAT-p95-hooks.md
-    │   └── FEAT-sqlite-store.md
     ├── P2/                                # Core features (3 tasks)
-    │   ├── FEAT-background-optimize.md
-    │   ├── FEAT-langfuse-adapter.md
-    │   └── FEAT-non-disruptive-notify.md
     └── P3/                                # Advanced features (3 tasks)
-        ├── DOCS-contributing.md
-        ├── FEAT-cross-model-eval.md
-        └── FEAT-dashboard.md
 ```
 
 ---
