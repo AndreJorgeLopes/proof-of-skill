@@ -151,40 +151,26 @@ Ask user: global (`~/.claude/skills/`) or project-local (`skills/`)? Commit with
 | tessl review | Static review completed |
 | tessl eval | Score >= 85% |
 
-## Rationalization Table
+## Rationalizations & Red Flags
 
-| Excuse | Reality |
+Any of these thoughts mean **STOP — delete what you wrote — start over**:
+
+| If you think... | The reality is... |
 |--------|---------|
-| "The skill is straightforward, no need to test" | Simple skills have hidden edge cases. Test anyway. |
+| "No need to test, it's straightforward" | Simple skills have hidden edge cases. Test anyway. |
 | "I'll test after writing" | Tests-after prove nothing. RED before GREEN. |
-| "The prompt is clear enough" | Clear to you != clear to the agent. Interview first. |
-| "No similar skill exists" | Did you actually search all 5 locations? |
+| "The prompt is clear enough" | You're projecting. Interview the user. |
+| "No similar skill exists" | Did you search all 5 locations? Actually search. |
 | "tessl eval is overkill" | A 67% skill feels 100% to the author. Measure. |
-| "I can make it comprehensive to compensate" | Generic checklists navigate to the average. Specificity > comprehensiveness. |
-| "The user asked for one skill, so I'll make one" | Multi-concern requests need decomposition. Ask. |
-| "Context is clear from the request" | You're projecting your understanding. Interview. |
-| "I already know what this skill should do" | Knowledge of the domain != knowledge of what the agent needs. |
-| "I'll add more later" | Later never comes without an eval loop. Do it now. |
+| "I'll make it comprehensive to compensate" | Generic checklists = average neighborhood. Specificity wins. |
+| "User asked for one skill, so one skill" | Multi-concern → decompose. Ask first. |
+| "I already know what this should do" | Domain knowledge != agent needs. Interview. |
 
-## Red Flags — STOP and Restart
-
-If you catch yourself doing ANY of these, STOP. Delete what you wrote. Start over.
-
-- Writing SKILL.md before running baseline scenarios
-- Skipping the interview ("context is clear enough")
-- Not searching all 5 discovery locations
-- Creating a monolithic skill for multi-concern requests
-- Declaring complete without tessl eval
-- Producing a generic checklist instead of addressing specific baseline failures
-- Running scenarios AFTER writing (tests-after prove nothing)
-- Using the baseline document as a substitute for actually running scenarios
-
-**All of these mean: Delete. Start over. No exceptions.**
+**Also stop if:** writing SKILL.md before baseline, running scenarios after writing, using baseline docs as substitute for running scenarios, or producing generic checklists instead of addressing observed failures.
 
 ## Common Mistakes
 
-- **Interviewing yourself**: Answering your own questions instead of asking the user. The user's answers are the requirements.
-- **Discovery theater**: Searching one location and declaring "nothing found." Search all 5.
-- **Scenario recycling**: Reusing the same scenario structure for every skill. Tailor scenarios to the specific skill's failure modes.
-- **Comprehensive = good**: Writing a long skill that covers everything generically. Short + specific beats long + generic.
-- **Skipping the persona**: Every skill should define who the agent IS when executing it. "You are a code reviewer" != "You are a senior engineer focused on correctness in distributed systems."
+- **Interviewing yourself**: Answering your own questions instead of asking the user
+- **Discovery theater**: Searching one location and declaring "nothing found"
+- **Scenario recycling**: Same scenario template for every skill — tailor to the specific failure modes
+- **Skipping the persona**: "You are a code reviewer" != "You are a senior engineer focused on correctness in distributed systems"
