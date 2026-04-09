@@ -1,8 +1,8 @@
 <div align="center">
 
-# proof-of-skill
-
 <img src="docs/images/title.png" alt="proof-of-skill: tested, measured, validated" width="700" />
+
+---
 
 **Test-Driven Development for AI agent skills. Write a failing test. Build the minimal skill. Prove it works, or don't ship it.**
 
@@ -12,7 +12,7 @@
 [![Eval Score](https://img.shields.io/badge/Eval_Score-86%25-f59e0b.svg)](docs/eval/)
 [![Baseline](https://img.shields.io/badge/Baseline-2--7%25-ef4444.svg)](docs/eval/create-skill-baseline.md)
 
-*If your skills aren't tested, they're just suggestions.*
+> *"If your skills aren't tested, they're just suggestions."*
 
 </div>
 
@@ -26,17 +26,17 @@
 
 ## The Problem
 
-AI agents are only as good as their skills. And most skills are untested.
+AI agents are only as good as their skills. And **most skills are untested.**
 
-An agent writes a SKILL.md. The author reads it, thinks "looks reasonable," and ships it. But a skill that *looks* reasonable and a skill that *performs* well are two different things. A code review skill with a perfect static review score can still produce generic checklists that add zero value in practice.
+An agent writes a SKILL.md. The author reads it, thinks "looks reasonable," and ships it. But a skill that *looks* reasonable and a skill that *performs* well are two very different things. A code review skill with a perfect static review score can still produce generic checklists that add **zero value** in practice.
 
-Without empirical testing, skills silently degrade. They drift. They rationalize their way past constraints. And nobody notices, because there is no baseline to compare against.
+Without empirical testing, skills *silently degrade*. They drift. They rationalize their way past constraints. And nobody notices, because there is no baseline to compare against.
 
-We ran the numbers. Across 6 pressure scenarios, agents without tested skills performed at **2-7% of their potential**. Not 50%. Not 30%. Single digits.
+We ran the numbers. Across 6 pressure scenarios, agents without tested skills performed at **2-7% of their potential.** Not 50%. Not 30%. *Single digits.*
 
 ## The Solution
 
-proof-of-skill applies the most battle-tested quality methodology in software engineering, Test-Driven Development, to AI agent skills. Write pressure scenarios first. Run them without the skill to document baseline failures. Then write the minimal skill that addresses those specific failures. Every skill is validated empirically against measurable criteria, not subjective review.
+proof-of-skill applies the most battle-tested quality methodology in software engineering, **Test-Driven Development**, to AI agent skills. Write pressure scenarios first. Run them *without* the skill to document baseline failures. Then write the *minimal* skill that addresses those specific failures. Every skill is validated **empirically** against measurable criteria, not subjective review.
 
 The difference is not incremental. It is categorical: **2-7% baseline to 86%+ validated.**
 
@@ -45,8 +45,10 @@ The difference is not incremental. It is categorical: **2-7% baseline to 86%+ va
 ## Quick Start
 
 ```bash
-git clone https://github.com/AndreJorgeLopes/proof-of-skill.git && cd proof-of-skill && ln -sf "$(pwd)"/skills/*/ ~/.claude/skills/
+curl -fsSL https://raw.githubusercontent.com/AndreJorgeLopes/proof-of-skill/main/install.sh | bash
 ```
+
+This clones the repo to `~/.local/share/proof-of-skill`, symlinks all skills into Claude Code, and sets up **auto-update support.** Re-run the same command anytime to pull the latest skills.
 
 Then create your first tested skill:
 
@@ -54,21 +56,23 @@ Then create your first tested skill:
 /create-skill
 ```
 
-That's it. The command walks you through the full TDD cycle: interview, discovery, baseline, writing, evaluation. No configuration needed.
+The command walks you through the full TDD cycle: **interview, discovery, baseline, writing, evaluation.** No configuration needed.
+
+> **Prerequisites:** [git](https://git-scm.com/), [Claude Code](https://docs.anthropic.com/en/docs/claude-code), and [devflow](https://github.com/AndreJorgeLopes/devflow) (provides persistent memory via Hindsight and session management via agent-deck).
 
 ---
 
 ## What Makes It Different
 
-- **Baseline-first, always.** You must watch the agent fail before you write the fix. No baseline, no skill. This eliminates the most dangerous failure mode in skill engineering: writing skills that address imagined problems instead of observed ones.
+- **Baseline-first, always.** You *must* watch the agent fail before you write the fix. No baseline, no skill. This eliminates the most dangerous failure mode in skill engineering: writing skills that address **imagined** problems instead of **observed** ones.
 
-- **Empirical validation over review scores.** A static review score tells you the skill *reads* well. An empirical eval tells you it *works*. The `/create-skill` workflow scored 86% on tessl eval, after the baseline showed agents performing at 2-7% without it.
+- **Empirical validation over review scores.** A static review score tells you the skill *reads* well. An empirical eval tells you it *works*. The `/create-skill` workflow scored **86%** on tessl eval, after the baseline showed agents performing at **2-7%** without it.
 
-- **Capability space navigation.** Generic prompts land in the densely populated center of the model's output distribution: average, predictable, same as every other model. proof-of-skill uses persona stacking, constraint chaining, and rationalization counters to navigate to rare, high-value regions that generic prompts never reach.
+- **Capability space navigation.** Generic prompts land in the densely populated *center* of the model's output distribution: average, predictable, same as every other model. proof-of-skill uses **persona stacking**, **constraint chaining**, and **rationalization counters** to navigate to rare, high-value regions that generic prompts never reach.
 
-- **Rationalization detection.** Agents follow a predictable shortcut chain: *"User asked" > "I know this" > "Found the format" > "I'll be comprehensive" > "Done."* Each step feels reasonable. The chain skips every quality gate. proof-of-skill documents these chains and builds explicit counters into every skill.
+- **Rationalization detection.** Agents follow a predictable shortcut chain: *"User asked" > "I know this" > "Found the format" > "I'll be comprehensive" > "Done."* Each step feels reasonable. The chain skips *every* quality gate. proof-of-skill documents these chains and builds **explicit counters** into every skill.
 
-- **Self-healing monitoring** (v1.0). Skills that detect their own degradation through p95 sampling and trigger automatic optimization loops. Not tested once: continuously validated.
+- **Self-healing monitoring** (v1.0). Skills that detect their own degradation through p95 sampling and trigger *automatic* optimization loops. Not tested once: **continuously validated.**
 
 ---
 
@@ -80,7 +84,7 @@ That's it. The command walks you through the full TDD cycle: interview, discover
 
 </div>
 
-We ran 3 pressure scenarios against a naive agent: no skill loaded, no guidance, just the raw request. Then ran the same scenarios with `/create-skill` loaded.
+We ran 3 pressure scenarios against a naive agent: **no skill loaded**, no guidance, just the raw request. Then ran the same scenarios with `/create-skill` loaded.
 
 ### Without proof-of-skill (baseline)
 
@@ -90,11 +94,11 @@ We ran 3 pressure scenarios against a naive agent: no skill loaded, no guidance,
 | Multi-concern (DB + Slack + Jira in one skill) | 0% | 0% | 0% | 0% | 0% | **~2%** |
 | Existing overlap (skill that already exists) | 0% | 0% | 0% | 0% | 0% | **~2%** |
 
-**What happened:** The agent skipped the interview every time. Skipped discovery, missing that `superpowers:writing-plans` already exists as a full-featured skill. Wrote generic checklists. Shipped untested output. Three for three.
+**What happened:** The agent skipped the interview *every single time.* Skipped discovery, missing that `superpowers:writing-plans` already exists as a full-featured skill. Wrote generic checklists. Shipped untested output. **Three for three.**
 
 ### The Rationalization Chain
 
-Every scenario followed the same predictable shortcut pattern:
+Every scenario followed the *exact same* predictable shortcut pattern:
 
 ```
 "User asked me to create X"
@@ -104,20 +108,20 @@ Every scenario followed the same predictable shortcut pattern:
         > "Done."
 ```
 
-Each step *feels* reasonable. The chain skips: clarifying what the user actually needs (interview), checking what already exists (discovery), testing whether the output works (TDD), measuring quality (eval), and improving based on evidence (iteration).
+Each step *feels* reasonable. The chain skips: **clarifying** what the user actually needs (interview), **checking** what already exists (discovery), **testing** whether the output works (TDD), **measuring** quality (eval), and **improving** based on evidence (iteration).
 
 ### With proof-of-skill
 
 | Gate | Requirement | Result |
 |------|-------------|:------:|
-| Interview | 3+ questions asked and answered | Enforced |
-| Discovery | 5 locations searched for existing skills | Enforced |
-| RED baseline | 3+ pressure scenarios run without skill | Enforced |
-| GREEN verify | All scenarios pass with skill loaded | Enforced |
-| tessl review | Static quality check | Passed |
-| tessl eval | Empirical score >= 85% | **86%** |
+| **Interview** | 3+ questions asked and answered | Enforced |
+| **Discovery** | 5 locations searched for existing skills | Enforced |
+| **RED baseline** | 3+ pressure scenarios run without skill | Enforced |
+| **GREEN verify** | All scenarios pass with skill loaded | Enforced |
+| **tessl review** | Static quality check | Passed |
+| **tessl eval** | Empirical score >= 85% | **86%** |
 
-Every gate is mandatory. Rationalizations are documented and countered. The skill addresses observed failures, not imagined ones.
+Every gate is **mandatory.** Rationalizations are documented and countered. The skill addresses *observed* failures, not imagined ones.
 
 ---
 
@@ -125,7 +129,7 @@ Every gate is mandatory. Rationalizations are documented and countered. The skil
 
 ### The RED-GREEN-REFACTOR Cycle for Skills
 
-The same discipline that changed software engineering, applied to AI skill creation.
+The same discipline that changed software engineering, now applied to AI skill creation.
 
 ```mermaid
 flowchart LR
@@ -161,9 +165,9 @@ flowchart LR
 
 | Phase | What Happens | Why It Matters |
 |:-----:|-------------|----------------|
-| **RED** | Write pressure scenarios. Run them without the skill. Record every failure, every rationalization, every shortcut the agent takes. | You cannot fix what you have not observed. Baselines prevent skills that solve imagined problems. |
-| **GREEN** | Write the minimal SKILL.md that addresses **only** the observed failures. Run the same scenarios again. | Minimal means targeted. Generic checklists are the enemy of precision. |
-| **REFACTOR** | Run tessl eval for empirical scoring. Loop with ralph-loop until score >= 85%. | A 67% skill feels 100% to its author. Measurement eliminates self-deception. |
+| **RED** | Write pressure scenarios. Run them *without* the skill. Record every failure, every rationalization, every shortcut the agent takes. | You cannot fix what you have not **observed.** Baselines prevent skills that solve imagined problems. |
+| **GREEN** | Write the *minimal* SKILL.md that addresses **only** the observed failures. Run the same scenarios again. | Minimal means *targeted.* Generic checklists are the enemy of precision. |
+| **REFACTOR** | Run tessl eval for empirical scoring. Loop with ralph-loop until score >= 85%. | A 67% skill *feels* 100% to its author. **Measurement** eliminates self-deception. |
 
 ### The Full Pipeline
 
@@ -196,9 +200,9 @@ flowchart TD
 
 ## The Capability Space Concept
 
-This is the core insight behind proof-of-skill.
+This is the **core insight** behind proof-of-skill.
 
-LLMs have a vast capability space: the full range of outputs they can produce for any given input. When you send a generic prompt like "review this code," the model navigates to the **densely populated center** of that space. The output is average, predictable, and indistinguishable from what any other model would produce. We call this the "generic center."
+LLMs have a vast *capability space*: the full range of outputs they can produce for any given input. When you send a generic prompt like "review this code," the model navigates to the **densely populated center** of that space. The output is average, predictable, and indistinguishable from what any other model would produce. We call this the *"generic center."*
 
 proof-of-skill uses three techniques to navigate away from the center and into **rare, high-value regions** where the genuinely useful output lives:
 
@@ -238,13 +242,13 @@ graph TD
     style TARGET fill:#1a4d2e,color:#fff
 ```
 
-**Persona stacking** activates specific capability patterns. "You are a skill architect who never ships untested skills" is not the same prompt as "You are helpful." The persona narrows the output distribution toward a specific region.
+**Persona stacking** activates specific capability patterns. *"You are a skill architect who never ships untested skills"* is not the same prompt as *"You are helpful."* The persona **narrows** the output distribution toward a specific region.
 
-**Constraint chaining** layers successive constraints, each one narrowing the space further. "Interview first" + "search before create" + "baseline before writing" + "eval before shipping" creates a path that no generic prompt would follow.
+**Constraint chaining** layers successive constraints, each one narrowing the space further. *"Interview first"* + *"search before create"* + *"baseline before writing"* + *"eval before shipping"* creates a path that no generic prompt would follow.
 
-**Rationalization counters** prevent drift back to the center. When an agent thinks "It's straightforward, no need to test," that thought is a documented rationalization with an explicit counter: "Simple skills have hidden edge cases. Test anyway." The counters are built from observed baseline behavior, real rationalizations from real failures.
+**Rationalization counters** prevent drift back to the center. When an agent thinks *"It's straightforward, no need to test,"* that thought is a documented rationalization with an explicit counter: *"Simple skills have hidden edge cases. Test anyway."* The counters are built from observed baseline behavior, **real** rationalizations from **real** failures.
 
-The difference between a 7% baseline and an 86% evaluated skill is not incremental improvement. It is the distance between the generic center and precise coordinates.
+The difference between a 7% baseline and an 86% evaluated skill is not incremental improvement. It is the distance between the *generic center* and **precise coordinates.**
 
 ---
 
@@ -252,7 +256,7 @@ The difference between a 7% baseline and an 86% evaluated skill is not increment
 
 ### `/create-skill`: TDD Skill Creation
 
-Creates a new skill through a structured TDD process. Enforces interview, discovery, baseline testing, empirical validation, and iteration. Every box in the pipeline is mandatory. Skip one, start over.
+Creates a new skill through a structured TDD process. Enforces **interview, discovery, baseline testing, empirical validation, and iteration.** Every box in the pipeline is mandatory. Skip one, start over.
 
 ```
 /create-skill                              # starts interview
@@ -264,15 +268,15 @@ Creates a new skill through a structured TDD process. Enforces interview, discov
 
 | Step | Gate | What Gets Skipped Without It |
 |------|------|----------------------------|
-| Interview | 3+ questions, one at a time | User's actual needs (agent assumes) |
-| Discovery | 5 locations searched | Existing skills (agent creates duplicates) |
-| RED | 3+ pressure scenarios, no skill | Baseline failures (agent solves imagined problems) |
-| GREEN | Minimal SKILL.md, verify all pass | Targeted fixes (agent writes generic checklists) |
-| REFACTOR | tessl eval >= 85% | Empirical quality (agent ships at 7%) |
+| **Interview** | 3+ questions, one at a time | User's *actual* needs (agent assumes) |
+| **Discovery** | 5 locations searched | Existing skills (agent creates *duplicates*) |
+| **RED** | 3+ pressure scenarios, no skill | Baseline failures (agent solves *imagined* problems) |
+| **GREEN** | Minimal SKILL.md, verify all pass | Targeted fixes (agent writes *generic checklists*) |
+| **REFACTOR** | tessl eval >= 85% | Empirical quality (agent ships at *7%*) |
 
 ### `/write-spike`: Technical Investigation
 
-Conducts a 4-phase technical investigation producing both a spike document and a private notes file. Pulls context from Jira, Slack, Hindsight, and the codebase in parallel before engaging the user.
+Conducts a **4-phase** technical investigation producing both a spike document and a private notes file. Pulls context from Jira, Slack, Hindsight, and the codebase *in parallel* before engaging the user.
 
 ```
 /write-spike                               # starts from scratch
@@ -299,53 +303,48 @@ flowchart LR
 
 | Phase | What Happens | Output |
 |:-----:|-------------|--------|
-| **1. Context Assembly** | 4 parallel agents gather from Jira, Hindsight, Slack, and external docs. Codebase discovery maps spike goals to repos. | Unified context from all sources |
-| **2. Knowledge Building** | Classify every goal: Known / Can-Investigate / Need-Others. Present options for significant decisions. Build delegation guide. | Knowledge classification + investigation backlog |
-| **3. Document Generation** | Structured spike doc with Mermaid diagrams, effort estimates, cross-team dependencies. Plus private notes with delegation guide and contact confidence. | Two files: spike doc + private notes |
-| **4. Validation** | Self-review, grill-me stress test, B1 investigation execution, retain learnings to Hindsight. | Validated, stress-tested document |
+| **1. Context Assembly** | 4 parallel agents gather from Jira, Hindsight, Slack, and external docs. Codebase discovery maps spike goals to repos. | *Unified context from all sources* |
+| **2. Knowledge Building** | Classify every goal: **Known** / **Can-Investigate** / **Need-Others**. Present options for significant decisions. Build delegation guide. | *Knowledge classification + investigation backlog* |
+| **3. Document Generation** | Structured spike doc with Mermaid diagrams, effort estimates, cross-team dependencies. Plus **private notes** with delegation guide and contact confidence. | *Two files: spike doc + private notes* |
+| **4. Validation** | Self-review, grill-me stress test, B1 investigation execution, retain learnings to Hindsight. | *Validated, stress-tested document* |
 
 **What it produces:**
 - **Spike document.** Structured investigation with architecture diagrams, knowledge classification (Known/Can-Investigate/Need-Others), effort estimates, cross-team dependencies, testing strategy, and phasing.
-- **Private notes** (dot-prefixed). Delegation guide, contact confidence table, low-confidence assumptions, things to discuss with manager.
+- **Private notes** (dot-prefixed). Delegation guide, contact confidence table, low-confidence assumptions, things to discuss with manager. *Never shared with the team.*
 
 ---
 
 ## Eval Suite
 
-The eval suite uses pressure scenarios designed to expose specific failure modes. Each scenario combines multiple pressures: vague input + familiar domain, existing overlap + complex scope, minimal input + real production data.
+The eval suite uses **pressure scenarios** designed to expose specific failure modes. Each scenario combines multiple pressures: vague input + familiar domain, existing overlap + complex scope, minimal input + real production data.
 
 ### Create-Skill Pressure Scenarios
 
 | # | Scenario | Pressures | What It Tests |
 |:-:|----------|-----------|--------------|
-| 1 | "Create a skill for code review" | Vague + familiar domain | Does the agent interview or assume? |
-| 2 | "DB migrations + Slack + Jira in one skill" | Multi-concern + multiple tools | Does the agent decompose or create a monolith? |
-| 3 | "Writing implementation plans" | Direct overlap with existing skill | Does the agent discover or duplicate? |
+| 1 | "Create a skill for code review" | Vague + familiar domain | Does the agent **interview** or assume? |
+| 2 | "DB migrations + Slack + Jira in one skill" | Multi-concern + multiple tools | Does the agent **decompose** or create a monolith? |
+| 3 | "Writing implementation plans" | Direct overlap with existing skill | Does the agent **discover** or duplicate? |
 
 ### Write-Spike Pressure Scenarios
 
 | # | Scenario | Pressures | What It Tests |
 |:-:|----------|-----------|--------------|
-| 1 | "Write spike for MES-3899" | Minimal input, real Jira ticket | Does the agent investigate or paraphrase the ticket? |
-| 2 | No Jira ticket, free-text only | Missing structured input | Does the agent compensate with Slack/Hindsight/codebase? |
-| 3 | 10 goals, 7 services, 3 external deps | Scale + complexity | Does the agent flag scope or plow through? |
+| 1 | "Write spike for MES-3899" | Minimal input, real Jira ticket | Does the agent **investigate** or paraphrase the ticket? |
+| 2 | No Jira ticket, free-text only | Missing structured input | Does the agent **compensate** with Slack/Hindsight/codebase? |
+| 3 | 10 goals, 7 services, 3 external deps | Scale + complexity | Does the agent **flag scope** or plow through? |
 
 ### Running Evals
 
 ```bash
-# Static quality review
-tessl skill review skills/create-skill/SKILL.md
-
-# Empirical eval (runs pressure scenarios)
-tessl eval run --skill create-skill
-
-# Full suite
-tessl eval run --all
+tessl skill review skills/create-skill/SKILL.md   # static quality review
+tessl eval run --skill create-skill                # empirical eval (pressure scenarios)
+tessl eval run --all                               # full suite
 ```
 
 ### Baseline Quality Scores
 
-Measured across all create-skill scenarios. These are the GREEN phase targets; any score above baseline demonstrates the skill adds value.
+Measured across all create-skill scenarios. These are the GREEN phase targets; any score above baseline demonstrates the skill **adds value.**
 
 | Scenario | Interview | Discovery | TDD | Eval | Iteration | Specificity | Overall |
 |----------|:---------:|:---------:|:---:|:----:|:---------:|:-----------:|:-------:|
@@ -359,13 +358,16 @@ Post-skill validated score: **86%** (tessl eval).
 
 ## Architecture
 
-proof-of-skill builds on three external tools that form the validation and optimization backbone:
+proof-of-skill builds on four tools that form the validation, memory, and optimization backbone:
 
 | Tool | Role | How It's Used |
 |------|------|--------------|
 | [**tessl**](https://github.com/AndreJorgeLopes/tessl) | Empirical skill evaluation | Runs pressure scenarios, measures skill quality, provides static review |
-| **ralph-loop** | Iterative self-improvement | Auto-diagnose + fix + re-eval loop until score threshold met |
-| [**Hindsight**](https://github.com/vectorize-io/hindsight) | Persistent memory | Recalls past skill creation learnings across sessions |
+| [**ralph-loop**](https://github.com/anthropics/claude-plugins-public/tree/main/plugins/ralph-loop) | Iterative self-improvement | Auto-diagnose + fix + re-eval loop until score threshold met |
+| [**devflow**](https://github.com/AndreJorgeLopes/devflow) | AI dev environment | Provides persistent memory (Hindsight), session management (agent-deck), code review, and observability |
+| [**Hindsight**](https://github.com/vectorize-io/hindsight) | Persistent memory | 3-tier memory system (mental models, observations, facts) for recalling past skill creation learnings across sessions |
+
+> **How the pieces fit together:** [devflow](https://github.com/AndreJorgeLopes/devflow) runs and manages the [Hindsight](https://github.com/vectorize-io/hindsight) memory daemon, provides the `devflow:retain-learning` skill for persisting discoveries, and orchestrates [agent-deck](https://github.com/asheshgoplani/agent-deck) sessions for background optimization. proof-of-skill *consumes* these capabilities through its skills. The `/create-skill` workflow queries Hindsight for past learnings before starting, and the `/write-spike` workflow uses devflow's codebase walkthrough and memory recall during context assembly.
 
 ### v1.0 Architecture (planned)
 
@@ -379,6 +381,11 @@ graph TD
     subgraph VALIDATE ["Validation"]
         TE["tessl eval"]
         RL["ralph-loop"]
+    end
+
+    subgraph MEMORY ["Memory (via devflow)"]
+        HS["Hindsight\n3-tier memory"]
+        AD["agent-deck\nsession management"]
     end
 
     subgraph MONITOR ["Continuous Monitoring (v1.0)"]
@@ -396,6 +403,8 @@ graph TD
 
     CS --> TE
     WS --> TE
+    CS --> HS
+    WS --> HS
     TE --> RL
     RL --> TE
 
@@ -405,12 +414,14 @@ graph TD
     DB --> ALERT
     ALERT --> OPT
     OPT --> RL
+    OPT --> AD
     DB --> LF
     DB --> DASH
 
     style CREATE fill:#16a34a,color:#fff
     style VALIDATE fill:#2563eb,color:#fff
-    style MONITOR fill:#7c3aed,color:#fff
+    style MEMORY fill:#7c3aed,color:#fff
+    style MONITOR fill:#be185d,color:#fff
     style OBSERVE fill:#0891b2,color:#fff
 ```
 
@@ -441,6 +452,7 @@ See `tasks/` for the full v1.0 roadmap as Nimbalist task files with detailed imp
 proof-of-skill/
 ├── README.md
 ├── LICENSE                                # MIT
+├── install.sh                             # One-liner installer with auto-update
 ├── tessl.json                             # Skill registry for eval
 │
 ├── skills/
