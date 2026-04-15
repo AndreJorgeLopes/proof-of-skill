@@ -26,7 +26,9 @@ import type {
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
 
-const PORT = parseInt(process.env['PROOF_OF_SKILL_PORT'] || '3095', 10);
+const PROOF_OF_SKILL_PORT = process.env['PROOF_OF_SKILL_PORT'] || '3095';
+const parsedPort = parseInt(PROOF_OF_SKILL_PORT, 10);
+const PORT = Number.isInteger(parsedPort) && parsedPort > 0 && parsedPort <= 65535 ? parsedPort : 3095;
 
 // ---------------------------------------------------------------------------
 // Dashboard data types
@@ -65,14 +67,16 @@ const DEFAULT_THRESHOLD = 85;
 const NEAR_MISS_MARGIN = 5;
 
 function getMonitoredSkillNames(store: MetricsStore): string[] {
-  // Discover skills from invocations and eval_scores tables
+  // Discover skills from invocations table
   const invocationCounts = store.getInvocationCounts();
   const skillNames = new Set(Object.keys(invocationCounts));
 
-  // Also pick up skills that have scores but may not have invocations
-  // We use getRecentScores with a large limit to discover — this is a
-  // local dashboard so the data volume is small
-  // We rely on the invocation counts plus any skills in degradation events
+  // Also include skills that have eval scores but may not have invocations
+  for (const name of store.getEvalSkillNames()) {
+    skillNames.add(name);
+  }
+
+  // Also pick up skills from unresolved degradation events
   const degradations = store.getUnresolvedDegradations();
   for (const d of degradations) {
     skillNames.add(d.skill_name);
@@ -125,7 +129,7 @@ function computeNearMissCount(
     const recent = store.getRecentScores(name, 1);
     if (recent.length > 0) {
       const latest = recent[0]!.score;
-      if (latest >= threshold && latest < threshold + margin) {
+      if (latest < threshold && latest >= threshold - margin) {
         count++;
       }
     }
@@ -169,8 +173,8 @@ function buildSkillSummaries(
     const trend = store.getScoreTrend(name, 30);
     const isNearMiss =
       latestScore !== null &&
-      latestScore >= threshold &&
-      latestScore < threshold + NEAR_MISS_MARGIN;
+      latestScore < threshold &&
+      latestScore >= threshold - NEAR_MISS_MARGIN;
 
     return {
       name,
@@ -240,9 +244,9 @@ function serveStatic(res: ServerResponse, filePath: string, contentType: string)
 const store = new MetricsStore();
 
 const server = createServer((req: IncomingMessage, res: ServerResponse) => {
-  const url = req.url ?? '/';
+  const pathname = new URL(req.url ?? '/', 'http://localhost').pathname;
 
-  if (url === '/api/dashboard') {
+  if (pathname === '/api/dashboard') {
     try {
       const data = buildDashboardData(store);
       const json = JSON.stringify(data);
@@ -259,12 +263,12 @@ const server = createServer((req: IncomingMessage, res: ServerResponse) => {
     return;
   }
 
-  if (url === '/' || url === '/index.html') {
+  if (pathname === '/' || pathname === '/index.html') {
     serveStatic(res, resolve(__dirname, 'index.html'), MIME_TYPES['.html']!);
     return;
   }
 
-  if (url === '/charts.js') {
+  if (pathname === '/charts.js') {
     serveStatic(res, resolve(__dirname, 'charts.js'), MIME_TYPES['.js']!);
     return;
   }

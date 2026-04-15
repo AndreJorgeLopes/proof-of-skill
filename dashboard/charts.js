@@ -12,7 +12,7 @@ const NEAR_MISS_MARGIN = 5;
 
 function scoreColor(score) {
   if (score >= THRESHOLD) return '#3fb950'; // green
-  if (score >= THRESHOLD - NEAR_MISS_MARGIN) return '#d29922'; // yellow (70-84)
+  if (score >= THRESHOLD - NEAR_MISS_MARGIN) return '#d29922'; // yellow (80-84)
   return '#f85149'; // red
 }
 
@@ -71,7 +71,7 @@ function renderSummaryCards(data) {
 function drawBarChart(canvas, data) {
   const invocations = data.invocations;
   const skills = data.skills || [];
-  const entries = Object.entries(invocations);
+  const entries = Object.entries(invocations).sort(([a], [b]) => a.localeCompare(b));
 
   if (entries.length === 0) return;
 
@@ -131,7 +131,11 @@ function drawBarChart(canvas, data) {
     const score = scoreMap[name];
     ctx.fillStyle = score !== null && score !== undefined ? scoreColor(score) : '#58a6ff';
     ctx.beginPath();
-    ctx.roundRect(x, y, barWidth, barHeight, [3, 3, 0, 0]);
+    if (ctx.roundRect) {
+      ctx.roundRect(x, y, barWidth, barHeight, [3, 3, 0, 0]);
+    } else {
+      ctx.rect(x, y, barWidth, barHeight);
+    }
     ctx.fill();
 
     // X-axis labels
@@ -541,12 +545,18 @@ function removeEmptyState() {
 // Main refresh loop
 // ---------------------------------------------------------------------------
 
+let isRefreshing = false;
+
 async function refresh() {
+  if (isRefreshing) return;
+  isRefreshing = true;
   try {
     const data = await fetchData();
 
     if (data.summary.totalSkills === 0) {
       renderEmptyState();
+      document.getElementById('last-updated').textContent =
+        'Updated: ' + new Date().toLocaleTimeString();
       return;
     }
 
@@ -572,6 +582,8 @@ async function refresh() {
       loading.textContent = 'Failed to load dashboard data. Retrying...';
       loading.style.display = 'block';
     }
+  } finally {
+    isRefreshing = false;
   }
 }
 
