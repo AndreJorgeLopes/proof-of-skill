@@ -24,9 +24,13 @@ description: Use when registering an existing skill for continuous p95 quality m
 /monitor-skill                                → list available skills, prompt user to pick
 /monitor-skill <skill-name>                   → auto-generate scenarios + register
 /monitor-skill <skill-name> <scenarios...>    → parse user scenarios + fill gaps + register
+/monitor-skill <skill-name> --dry-run         → preview registration without writing files
 ```
 
 First arg = skill name (required for registration). Everything after = free-text eval scenario descriptions, separated by commas or newlines.
+
+### Flags
+- `--dry-run`: Show what would be registered without writing any files. Useful for reviewing auto-generated scenarios before committing to monitoring.
 
 ## Session Check
 
@@ -36,7 +40,9 @@ On invocation: check context window usage. If >10% consumed, ask user: "Continue
 
 ```mermaid
 flowchart TD
-    A[Parse input: name + scenarios] --> B{Has skill name?}
+    A[Parse input: name + scenarios + flags] --> V{Valid skill name?}
+    V -->|no| V1[Reject: invalid characters\npath traversal blocked]
+    V -->|yes| B{Has skill name?}
     B -->|no| C[List available skills\nprompt user to pick]
     C --> A
     B -->|yes| D[Locate skill file]
@@ -50,8 +56,10 @@ flowchart TD
     J --> K[Capture baseline: tessl eval --quick]
     K --> L{Score captured?}
     L -->|fail| M[Report error\nask user to proceed or abort]
-    L -->|yes| N[Write monitoring config\nidempotent upsert]
-    M -->|proceed| N
+    L -->|yes| DR{--dry-run?}
+    M -->|proceed| DR
+    DR -->|yes| DRS[Display summary\nno files written]
+    DR -->|no| N[Write monitoring config\nidempotent upsert]
     N --> O[Write scenarios file]
     O --> P[Display registration summary]
 ```
@@ -62,11 +70,14 @@ flowchart TD
 
 ### 1. Parse Input
 
-Extract skill name and optional scenario descriptions from invocation args.
+Extract skill name, optional scenario descriptions, and flags from invocation args.
 
 - **No args**: List all available skills from `tessl.json`, `skills/` directory, and `~/.claude/skills/`. Display as numbered list. Ask user to pick one. Do NOT proceed without selection.
 - **First arg**: Skill name.
 - **Remaining args**: Free-text scenario descriptions. Split on commas, semicolons, or newlines. Each fragment is one scenario seed.
+- **`--dry-run` flag**: If present anywhere in args, set dry-run mode. Strip the flag before parsing scenario descriptions.
+
+**Validation**: Reject skill names containing path traversal characters (`..`, `/`, `\`). A skill name should be a simple identifier (letters, numbers, hyphens, underscores only). If invalid, report "Invalid skill name '<name>'. Skill names may only contain letters, numbers, hyphens, and underscores." and stop.
 
 ### 2. Locate the Skill (MANDATORY — search all locations)
 
@@ -162,7 +173,11 @@ Run `tessl eval --quick` with the approved scenarios against the skill.
 
 **Rationalization counter**: If you think "tessl is probably not installed, I'll skip this step" -- STOP. Actually try to run it. Report the real result.
 
-### 7. Write Monitoring Config (idempotent)
+### 7. Dry-Run Gate
+
+If `--dry-run` was specified, display the full summary (skill path, scenarios, baseline score, config that would be written) but do NOT write any files. Print "Dry run complete. Run without --dry-run to register." and stop here. Steps 8-10 are skipped entirely.
+
+### 8. Write Monitoring Config (idempotent)
 
 Write to `~/.proof-of-skill/monitored-skills.json`:
 
@@ -192,7 +207,7 @@ Write to `~/.proof-of-skill/monitored-skills.json`:
 - `threshold`: Default 85. User can override via "set threshold to X" in invocation or when prompted
 - `sample_rate`: Default 20 (1-in-20). User can override similarly
 
-### 8. Write Scenarios File
+### 9. Write Scenarios File
 
 Write approved scenarios to `~/.proof-of-skill/scenarios/<skill-name>.yaml`:
 
@@ -210,9 +225,9 @@ scenarios:
 ```
 
 - Create `~/.proof-of-skill/scenarios/` directory if it does not exist
-- If file already exists for this skill: overwrite with new scenarios (the monitoring config update in step 7 already recorded the new baseline)
+- If file already exists for this skill: overwrite with new scenarios (the monitoring config update in step 8 already recorded the new baseline)
 
-### 9. Display Registration Summary
+### 10. Display Registration Summary
 
 Show the user a clear summary:
 
@@ -235,6 +250,19 @@ If this was a re-registration, also show:
   Change: <delta>
 ```
 
+## Constraints
+
+These constraints layer progressively to ensure monitoring quality:
+
+1. **Validate before locate** — Reject invalid skill names before searching the filesystem
+2. **Locate before analyze** — Do not analyze a skill you have not located and verified exists
+3. **Analyze before generate** — Do not generate scenarios without understanding the skill's full structure
+4. **Generate across all 5 categories** — Missing a category means missing a failure mode
+5. **User approval before baseline** — Never run baseline with scenarios the user hasn't seen
+6. **Baseline before register** — A skill without a baseline score has no reference point
+7. **Dry-run gate before writes** — If `--dry-run` is set, display everything but write nothing
+8. **Idempotent writes** — Read-merge-write, never overwrite
+
 ## Quality Gates
 
 | Gate | Requirement |
@@ -247,6 +275,47 @@ If this was a re-registration, also show:
 | Config written | ~/.proof-of-skill/monitored-skills.json updated idempotently |
 | Scenarios written | ~/.proof-of-skill/scenarios/<name>.yaml written |
 | Summary displayed | User sees all registration details |
+
+## Example Session
+
+### Input
+```
+/monitor-skill create-skill
+```
+
+### Expected Flow
+1. **Parse**: Skill name = "create-skill", no user scenarios, no flags
+2. **Locate**: Found at `skills/create-skill/SKILL.md`
+3. **Analyze**: Extracted purpose (TDD skill creation), 8 steps, 5 quality gates, 10 rationalization entries
+4. **Generate Scenarios**: 6 scenarios across 5 categories:
+   - Happy path: "User requests a well-scoped skill with clear requirements"
+   - Happy path: "User provides a skill name and detailed scenario descriptions"
+   - Edge case: "User provides only a skill name with no context"
+   - Failure mode: "tessl is not installed or not authenticated"
+   - Ambiguity: "User describes a skill that overlaps with 2 existing skills"
+   - Adversarial: "User requests a skill that bundles 5 unrelated concerns"
+5. **Approve**: User reviews and approves scenarios (may edit)
+6. **Baseline**: `tessl eval --quick` -> score: 86%
+7. **Dry-run gate**: Not dry-run, proceed to writes
+8. **Register**: Config written to `~/.proof-of-skill/monitored-skills.json`
+9. **Scenarios**: Written to `~/.proof-of-skill/scenarios/create-skill.yaml`
+10. **Summary**: "create-skill registered for monitoring. Baseline: 86%. Threshold: 85%. Sample rate: 1-in-20."
+
+### Dry-Run Variant
+```
+/monitor-skill create-skill --dry-run
+```
+
+Same flow through step 6, then:
+7. **Dry-run gate**: `--dry-run` detected. Display full summary without writing files. Print "Dry run complete. Run without --dry-run to register."
+
+### Validation Rejection
+```
+/monitor-skill ../../../etc/passwd
+```
+
+1. **Parse**: Skill name = "../../../etc/passwd"
+2. **Validation**: Rejected -- contains path traversal characters. Print "Invalid skill name '../../../etc/passwd'. Skill names may only contain letters, numbers, hyphens, and underscores." Stop.
 
 ## Rationalizations & Red Flags
 
