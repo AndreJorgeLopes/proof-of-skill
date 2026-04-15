@@ -1,0 +1,364 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>proof-of-skill dashboard</title>
+  <style>
+    /* Dark theme, minimal CSS. No external dependencies. */
+    :root {
+      --bg: #0d1117;
+      --surface: #161b22;
+      --border: #30363d;
+      --text: #e6edf3;
+      --muted: #8b949e;
+      --green: #3fb950;
+      --red: #f85149;
+      --yellow: #d29922;
+      --blue: #58a6ff;
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      line-height: 1.5;
+      padding: 24px;
+      max-width: 1400px;
+      margin: 0 auto;
+    }
+
+    header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 24px;
+      padding-bottom: 16px;
+      border-bottom: 1px solid var(--border);
+    }
+
+    header h1 {
+      font-size: 20px;
+      font-weight: 600;
+    }
+
+    #last-updated {
+      color: var(--muted);
+      font-size: 13px;
+    }
+
+    /* Summary cards grid */
+    #summary-cards {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+      gap: 16px;
+      margin-bottom: 24px;
+    }
+
+    .card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 16px;
+    }
+
+    .card-label {
+      font-size: 12px;
+      color: var(--muted);
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      margin-bottom: 4px;
+    }
+
+    .card-value {
+      font-size: 28px;
+      font-weight: 700;
+      font-variant-numeric: tabular-nums;
+    }
+
+    .card-value.green { color: var(--green); }
+    .card-value.yellow { color: var(--yellow); }
+    .card-value.red { color: var(--red); }
+    .card-value.blue { color: var(--blue); }
+
+    /* Chart sections */
+    .chart-section {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 16px;
+      margin-bottom: 24px;
+    }
+
+    .chart-section h2 {
+      font-size: 14px;
+      font-weight: 600;
+      margin-bottom: 12px;
+      color: var(--muted);
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+
+    canvas {
+      width: 100%;
+      height: 280px;
+      display: block;
+    }
+
+    /* Charts row — side by side on wide screens */
+    .charts-row {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(400px, 1fr));
+      gap: 24px;
+      margin-bottom: 24px;
+    }
+
+    .charts-row .chart-section {
+      margin-bottom: 0;
+    }
+
+    /* Health table */
+    #skill-table {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 16px;
+      margin-bottom: 24px;
+      overflow-x: auto;
+    }
+
+    #skill-table h2 {
+      font-size: 14px;
+      font-weight: 600;
+      margin-bottom: 12px;
+      color: var(--muted);
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 14px;
+    }
+
+    th {
+      text-align: left;
+      padding: 8px 12px;
+      border-bottom: 1px solid var(--border);
+      color: var(--muted);
+      font-weight: 500;
+      font-size: 12px;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+
+    td {
+      padding: 10px 12px;
+      border-bottom: 1px solid var(--border);
+      vertical-align: middle;
+    }
+
+    tr:last-child td {
+      border-bottom: none;
+    }
+
+    .score-badge {
+      display: inline-block;
+      padding: 2px 8px;
+      border-radius: 12px;
+      font-size: 13px;
+      font-weight: 600;
+      font-variant-numeric: tabular-nums;
+    }
+
+    .score-badge.green { background: rgba(63, 185, 80, 0.15); color: var(--green); }
+    .score-badge.yellow { background: rgba(210, 153, 34, 0.15); color: var(--yellow); }
+    .score-badge.red { background: rgba(248, 81, 73, 0.15); color: var(--red); }
+
+    .status-badge {
+      display: inline-block;
+      padding: 2px 8px;
+      border-radius: 12px;
+      font-size: 11px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+
+    .status-badge.healthy { background: rgba(63, 185, 80, 0.15); color: var(--green); }
+    .status-badge.near-miss { background: rgba(210, 153, 34, 0.15); color: var(--yellow); }
+    .status-badge.degraded { background: rgba(248, 81, 73, 0.15); color: var(--red); }
+
+    .trend-arrow {
+      font-size: 16px;
+      font-weight: 700;
+    }
+
+    .trend-arrow.improving { color: var(--green); }
+    .trend-arrow.declining { color: var(--red); }
+    .trend-arrow.stable { color: var(--muted); }
+
+    .sparkline-cell {
+      width: 120px;
+    }
+
+    /* Optimization timeline */
+    #optimization-timeline {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 16px;
+      margin-bottom: 24px;
+    }
+
+    #optimization-timeline h2 {
+      font-size: 14px;
+      font-weight: 600;
+      margin-bottom: 12px;
+      color: var(--muted);
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+
+    .timeline-item {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 8px 0;
+      border-bottom: 1px solid var(--border);
+    }
+
+    .timeline-item:last-child {
+      border-bottom: none;
+    }
+
+    .timeline-dot {
+      width: 10px;
+      height: 10px;
+      border-radius: 50%;
+      flex-shrink: 0;
+    }
+
+    .timeline-dot.converged { background: var(--green); }
+    .timeline-dot.in-progress { background: var(--yellow); }
+    .timeline-dot.failed { background: var(--red); }
+
+    .timeline-info {
+      flex: 1;
+    }
+
+    .timeline-skill {
+      font-weight: 600;
+      font-size: 14px;
+    }
+
+    .timeline-meta {
+      font-size: 12px;
+      color: var(--muted);
+    }
+
+    .timeline-scores {
+      font-variant-numeric: tabular-nums;
+      font-size: 13px;
+      text-align: right;
+    }
+
+    .timeline-empty {
+      color: var(--muted);
+      font-size: 14px;
+      padding: 12px 0;
+    }
+
+    /* Empty state */
+    .empty-state {
+      text-align: center;
+      padding: 48px 24px;
+      color: var(--muted);
+    }
+
+    .empty-state h2 {
+      font-size: 18px;
+      margin-bottom: 8px;
+      color: var(--text);
+    }
+
+    .empty-state p {
+      font-size: 14px;
+    }
+
+    /* Loading indicator */
+    .loading {
+      text-align: center;
+      padding: 24px;
+      color: var(--muted);
+      font-size: 14px;
+    }
+
+    /* Responsive */
+    @media (max-width: 600px) {
+      body { padding: 12px; }
+      header { flex-direction: column; align-items: flex-start; gap: 4px; }
+      .charts-row { grid-template-columns: 1fr; }
+      canvas { height: 200px; }
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>proof-of-skill</h1>
+    <span id="last-updated">Loading...</span>
+  </header>
+
+  <main id="main-content">
+    <div class="loading" id="loading">Loading dashboard data...</div>
+
+    <div id="dashboard-content" style="display: none;">
+      <section id="summary-cards" aria-label="Summary metrics">
+        <!-- Populated by charts.js -->
+      </section>
+
+      <div class="charts-row">
+        <section class="chart-section">
+          <h2>Invocations per Skill</h2>
+          <canvas id="invocation-canvas" aria-label="Bar chart showing invocation counts per skill"></canvas>
+        </section>
+        <section class="chart-section">
+          <h2>Quality Scores Over Time</h2>
+          <canvas id="score-canvas" aria-label="Line chart showing quality scores over time with threshold reference line"></canvas>
+        </section>
+      </div>
+
+      <section id="skill-table" aria-label="Skill health details">
+        <h2>Skill Health</h2>
+        <table id="health-table">
+          <thead>
+            <tr>
+              <th>Skill</th>
+              <th>Score</th>
+              <th>Trend (30d)</th>
+              <th>Status</th>
+              <th>Invocations</th>
+              <th class="sparkline-cell">Sparkline</th>
+            </tr>
+          </thead>
+          <tbody id="health-table-body">
+            <!-- Populated by charts.js -->
+          </tbody>
+        </table>
+      </section>
+
+      <section id="optimization-timeline" aria-label="Optimization history">
+        <h2>Optimization History</h2>
+        <div id="timeline">
+          <!-- Populated by charts.js -->
+        </div>
+      </section>
+    </div>
+  </main>
+
+  <script src="charts.js"></script>
+</body>
+</html>
