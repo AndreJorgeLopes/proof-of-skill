@@ -18,9 +18,9 @@
  * - Events are recorded in the MetricsStore at start and completion
  */
 
-import { execSync, type ExecSyncOptionsWithStringEncoding } from 'node:child_process';
+import { execFileSync, spawnSync, type ExecSyncOptionsWithStringEncoding } from 'node:child_process';
 import { writeFileSync, mkdirSync, existsSync, unlinkSync, readdirSync } from 'node:fs';
-import { resolve, dirname } from 'node:path';
+import { resolve } from 'node:path';
 import { homedir } from 'node:os';
 
 import type { MetricsStore, OptimizationEvent } from './metrics-store.js';
@@ -73,11 +73,12 @@ const EXEC_OPTS: ExecSyncOptionsWithStringEncoding = {
 };
 
 /**
- * Run a shell command and return its stdout. Returns `null` on error.
+ * Run a command with explicit args array (no shell interpolation).
+ * Returns trimmed stdout or `null` on error.
  */
-function shellExec(cmd: string): string | null {
+function safeExec(command: string, args: string[]): string | null {
   try {
-    return execSync(cmd, EXEC_OPTS).trim();
+    return execFileSync(command, args, EXEC_OPTS).trim();
   } catch {
     return null;
   }
@@ -87,7 +88,20 @@ function shellExec(cmd: string): string | null {
  * Check whether the `agent-deck` CLI is available on the system PATH.
  */
 function isAgentDeckAvailable(): boolean {
-  return shellExec('command -v agent-deck') !== null;
+  const result = spawnSync('command', ['-v', 'agent-deck'], {
+    shell: true,
+    encoding: 'utf-8',
+    timeout: 5_000,
+  });
+  return result.status === 0;
+}
+
+/**
+ * Sanitize a skill name so it is safe for use in file paths and shell arguments.
+ * Strips anything that is not alphanumeric, underscore, or hyphen.
+ */
+function sanitizeSkillName(name: string): string {
+  return name.replace(/[^a-z0-9_-]/gi, '_');
 }
 
 /**
@@ -154,7 +168,7 @@ Improve the skill at ${config.skillPath} until its eval score reaches ${config.t
 ## Process (ralph-loop)
 Repeat up to ${config.maxIterations} times:
 
-1. **Evaluate**: Run \`tessl eval --scenarios ${config.scenariosPath}\` and capture the score
+1. **Evaluate**: Run \`tessl eval --scenarios ${config.scenariosPath}${config.evalMode === 'quick' ? ' --quick' : ''}\` and capture the score
 2. **Diagnose**: Read the eval output carefully. For each failing scenario:
    - Identify what the skill was supposed to do
    - Identify what it actually did
@@ -178,7 +192,8 @@ When done, output a JSON summary:
   "end_score": <final>,
   "iterations": <count>,
   "converged": <true|false>,
-  "changes": ["iteration 1: ...", "iteration 2: ..."]
+  "changes": ["iteration 1: ...", "iteration 2: ..."],
+  "duration_seconds": <total seconds from start to finish>
 }
 \`\`\`
 `.trim();
@@ -207,9 +222,12 @@ When done, output a JSON summary:
       );
     }
 
+    // --- Sanitize skill name for path/shell safety -------------------------
+    const safeName = sanitizeSkillName(config.skillName);
+
     // --- Generate the prompt and persist to a temp file --------------------
     const prompt = this.generateOptimizationPrompt(config);
-    const sessionName = `pos-optimize-${config.skillName}-${Date.now()}`;
+    const sessionName = `pos-optimize-${safeName}-${Date.now()}`;
 
     mkdirSync(PROMPTS_DIR, { recursive: true });
     const promptFile = resolve(PROMPTS_DIR, `${sessionName}.md`);
@@ -218,15 +236,27 @@ When done, output a JSON summary:
     // --- Spawn via agent-deck or fall back ---------------------------------
     let sessionId: string;
 
-    if (isAgentDeckAvailable()) {
-      sessionId = this.spawnWithAgentDeck(sessionName, promptFile);
-    } else {
-      sessionId = this.spawnFallback(config, promptFile);
+    try {
+      if (isAgentDeckAvailable()) {
+        sessionId = this.spawnWithAgentDeck(sessionName, promptFile);
+      } else {
+        sessionId = this.spawnFallback(config, promptFile);
+      }
+    } catch (err) {
+      // Clean up prompt file and re-throw
+      try { unlinkSync(promptFile); } catch { /* best-effort */ }
+      throw err;
+    }
+
+    // --- Only track agent-deck sessions (manual sessions can't be polled) --
+    if (sessionId !== 'manual') {
+      this.activeOptimizations.set(config.skillName, sessionId);
     }
 
     // --- Record optimisation start event -----------------------------------
-    this.activeOptimizations.set(config.skillName, sessionId);
-
+    // NOTE: trigger_score records the target we're aiming for, since the
+    // actual starting score is not yet known (determined by the first eval
+    // inside the session). The result event will carry the real start score.
     const event: OptimizationEvent = {
       skill_name: config.skillName,
       trigger_score: config.targetScore,
@@ -243,9 +273,9 @@ When done, output a JSON summary:
    * Spawn using agent-deck as the session manager.
    */
   private spawnWithAgentDeck(sessionName: string, promptFile: string): string {
-    const result = shellExec(
-      `agent-deck create --name "${sessionName}" --prompt-file "${promptFile}" --background`,
-    );
+    const result = safeExec('agent-deck', [
+      'create', '--name', sessionName, '--prompt-file', promptFile, '--background',
+    ]);
 
     if (!result) {
       throw new Error(
@@ -291,7 +321,7 @@ When done, output a JSON summary:
       return { status: 'running', lastOutput: 'Manual session — check your terminal' };
     }
 
-    const result = shellExec(`agent-deck status ${sessionId}`);
+    const result = safeExec('agent-deck', ['status', sessionId]);
     if (!result) {
       return { status: 'failed', lastOutput: 'Unable to query session status' };
     }
@@ -321,14 +351,16 @@ When done, output a JSON summary:
       return null; // Cannot read output from a manual session
     }
 
-    const stdout = shellExec(`agent-deck output ${sessionId}`);
+    const stdout = safeExec('agent-deck', ['output', sessionId]);
     if (!stdout) {
+      this.clearActiveBySessionId(sessionId);
       return null;
     }
 
     // --- Parse the JSON summary block from session output -------------------
     const jsonMatch = stdout.match(/```json\n([\s\S]*?)\n```/);
     if (!jsonMatch?.[1]) {
+      this.clearActiveBySessionId(sessionId);
       return null;
     }
 
@@ -336,17 +368,35 @@ When done, output a JSON summary:
     try {
       parsed = JSON.parse(jsonMatch[1]) as Record<string, unknown>;
     } catch {
+      this.clearActiveBySessionId(sessionId);
       return null;
     }
 
+    // --- Type-safe extraction with runtime validation -----------------------
+    const skillName = typeof parsed['skill'] === 'string' ? parsed['skill'] : '';
+    const startScore = Number(parsed['start_score']);
+    const endScore = Number(parsed['end_score']);
+    const iterations = Number(parsed['iterations']);
+    const durationSeconds = Number(parsed['duration_seconds']);
+
+    if (isNaN(startScore) || isNaN(endScore) || isNaN(iterations)) {
+      this.clearActiveBySessionId(sessionId);
+      return null;
+    }
+
+    const converged = parsed['converged'] === true;
+    const changes = Array.isArray(parsed['changes'])
+      ? (parsed['changes'] as unknown[]).filter((c): c is string => typeof c === 'string')
+      : [];
+
     const result: OptimizationResult = {
-      skillName: (parsed['skill'] as string) ?? '',
-      startScore: (parsed['start_score'] as number) ?? 0,
-      endScore: (parsed['end_score'] as number) ?? 0,
-      iterations: (parsed['iterations'] as number) ?? 0,
-      converged: (parsed['converged'] as boolean) ?? false,
-      changes: (parsed['changes'] as string[]) ?? [],
-      duration: (parsed['duration'] as number) ?? 0,
+      skillName,
+      startScore,
+      endScore,
+      iterations,
+      converged,
+      changes,
+      duration: isNaN(durationSeconds) ? 0 : durationSeconds,
     };
 
     // --- Record completion in MetricsStore ---------------------------------
@@ -367,14 +417,23 @@ When done, output a JSON summary:
     }
 
     // --- Clean up active tracking ------------------------------------------
+    this.clearActiveBySessionId(sessionId);
+
+    return result;
+  }
+
+  /**
+   * Remove a session from activeOptimizations by its session ID.
+   * Called on both successful result retrieval and on parse/lookup failures
+   * to prevent stale entries from blocking future optimizations.
+   */
+  private clearActiveBySessionId(sessionId: string): void {
     for (const [skill, sid] of this.activeOptimizations.entries()) {
       if (sid === sessionId) {
         this.activeOptimizations.delete(skill);
         break;
       }
     }
-
-    return result;
   }
 
   // -----------------------------------------------------------------------
