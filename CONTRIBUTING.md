@@ -257,8 +257,10 @@ See the [README architecture section](README.md#architecture) for detailed diagr
 git clone https://github.com/AndreJorgeLopes/proof-of-skill.git
 cd proof-of-skill
 
-# Symlink skills for local testing
-./install.sh
+# For local development (test your changes directly):
+# install.sh installs from ~/.local/share, not the local checkout.
+# Instead, symlink your local skill into Claude's skills directory:
+ln -sf $(pwd)/skills/your-skill ~/.claude/skills/your-skill
 
 # Run eval scenarios
 tessl eval run --all
@@ -337,7 +339,7 @@ Your PR description should include:
 ### After merge
 
 - Your skill becomes available to all proof-of-skill users via `install.sh`
-- You'll be credited in the changelog
+- Your contribution will be visible in the project's commit history
 - If monitoring is set up (v1.0), your skill will be continuously validated
 
 ---
