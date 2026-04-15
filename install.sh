@@ -59,27 +59,58 @@ done
 skill_count=$(find "${INSTALL_DIR}/skills" -mindepth 1 -maxdepth 1 -type d | wc -l | tr -d ' ')
 ok "Linked ${skill_count} skills to ${SKILLS_DIR}"
 
-# ── Auto-update hook ──────────────────────────────────────────────────────
-# Registers a Claude Code hook that pulls the latest version on session start.
+# ── Make hooks executable ─────────────────────────────────────────────────
+
+if [ -d "${INSTALL_DIR}/hooks" ]; then
+  chmod +x "${INSTALL_DIR}"/hooks/*.sh 2>/dev/null || true
+  ok "Made hooks executable"
+fi
+
+# ── Hook registration guidance ────────────────────────────────────────────
+# Print instructions for registering the p95 sampling hook and auto-update.
 
 SETTINGS_FILE="${HOME}/.claude/settings.json"
+HOOK_PATH="${INSTALL_DIR}/hooks/skill-complete.sh"
 
-if [ -f "${SETTINGS_FILE}" ]; then
-  # Check if hook already registered
-  if ! grep -q "proof-of-skill" "${SETTINGS_FILE}" 2>/dev/null; then
-    info "To enable auto-updates, add this hook to ${SETTINGS_FILE}:"
+echo ""
+if [ -f "${HOOK_PATH}" ]; then
+  info "p95 sampling hook available at: ${HOOK_PATH}"
+
+  if [ -f "${SETTINGS_FILE}" ] && grep -q "skill-complete" "${SETTINGS_FILE}" 2>/dev/null; then
+    ok "p95 hook already registered in settings.json"
+  else
+    info "To enable p95 quality sampling, add this to ${SETTINGS_FILE}:"
     echo ""
     echo '  "hooks": {'
+    echo '    "PostToolUse": [{'
+    echo '      "type": "command",'
+    echo "      \"command\": \"${HOOK_PATH}\","
+    echo '      "timeout": 180'
+    echo '    }],'
     echo '    "SessionStart": [{'
     echo '      "type": "command",'
     echo '      "command": "git -C ~/.local/share/proof-of-skill pull --ff-only --quiet 2>/dev/null || true"'
     echo '    }]'
     echo '  }'
     echo ""
-    info "Or re-run this installer anytime to update manually."
   fi
 else
-  info "Tip: re-run this installer anytime to update, or set up a SessionStart hook for auto-updates."
+  if [ -f "${SETTINGS_FILE}" ]; then
+    if ! grep -q "proof-of-skill" "${SETTINGS_FILE}" 2>/dev/null; then
+      info "To enable auto-updates, add this hook to ${SETTINGS_FILE}:"
+      echo ""
+      echo '  "hooks": {'
+      echo '    "SessionStart": [{'
+      echo '      "type": "command",'
+      echo '      "command": "git -C ~/.local/share/proof-of-skill pull --ff-only --quiet 2>/dev/null || true"'
+      echo '    }]'
+      echo '  }'
+      echo ""
+      info "Or re-run this installer anytime to update manually."
+    fi
+  else
+    info "Tip: re-run this installer anytime to update, or set up a SessionStart hook for auto-updates."
+  fi
 fi
 
 # ── Done ──────────────────────────────────────────────────────────────────
