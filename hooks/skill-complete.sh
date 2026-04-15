@@ -29,7 +29,7 @@ CONFIG="$PROOF_DIR/monitored-skills.json"
 SCORES_LOG="$PROOF_DIR/scores.jsonl"
 DEGRADATIONS_LOG="$PROOF_DIR/degradations.jsonl"
 
-# Defaults (overridden by per-skill config or config/default.yaml)
+# Defaults (overridden by per-skill config in monitored-skills.json)
 DEFAULT_SAMPLE_RATE=20
 DEFAULT_THRESHOLD=85
 DEFAULT_MIN_INTERVAL=300
@@ -116,6 +116,10 @@ debug "Skill '$SKILL_NAME' is monitored"
 # ── Parse skill-specific config ──────────────────────────────────────────
 
 SAMPLE_RATE=$(echo "$SKILL_CONFIG" | jq -r ".sample_rate // $DEFAULT_SAMPLE_RATE")
+# Guard: SAMPLE_RATE must be a positive integer >= 1 (prevents modulo-by-zero)
+if ! [[ "$SAMPLE_RATE" =~ ^[0-9]+$ ]] || [[ "$SAMPLE_RATE" -lt 1 ]]; then
+  SAMPLE_RATE=$DEFAULT_SAMPLE_RATE
+fi
 THRESHOLD=$(echo "$SKILL_CONFIG" | jq -r ".threshold // $DEFAULT_THRESHOLD")
 SCENARIOS_PATH=$(echo "$SKILL_CONFIG" | jq -r '.scenarios_path // empty')
 
@@ -142,7 +146,9 @@ debug "Sampled! ($RANDOM_NUM == 0)"
 
 # ── Debounce: check last eval timestamp ──────────────────────────────────
 
-TIMESTAMP_FILE="$PROOF_DIR/last-eval-${SKILL_NAME}.timestamp"
+# Sanitize skill name for filename to prevent path traversal
+SAFE_SKILL_NAME="$(printf '%s' "$SKILL_NAME" | tr -c 'A-Za-z0-9._-' '_')"
+TIMESTAMP_FILE="$PROOF_DIR/last-eval-${SAFE_SKILL_NAME}.timestamp"
 MIN_INTERVAL="${DEFAULT_MIN_INTERVAL}"
 
 # Read min_interval from skill config if available
@@ -185,6 +191,10 @@ run_eval() {
     debug "Scenarios file not found: $scenarios_path — skipping eval"
     return 0
   fi
+
+  # Write debounce timestamp now that all prerequisites passed
+  date +%s > "$TIMESTAMP_FILE"
+  debug "Debounce timestamp written to $TIMESTAMP_FILE"
 
   # Run the eval with timeout
   local eval_output
@@ -239,9 +249,8 @@ run_eval() {
   fi
 }
 
-# Write debounce timestamp BEFORE forking to prevent race conditions
+# Ensure proof directory exists for timestamp file and logs
 mkdir -p "$PROOF_DIR"
-date +%s > "$TIMESTAMP_FILE"
 
 # Run eval in a background subshell so it does not block the user
 run_eval "$SKILL_NAME" "$SCENARIOS_PATH" "$THRESHOLD" &
