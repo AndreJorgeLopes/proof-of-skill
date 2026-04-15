@@ -122,17 +122,21 @@ export class Notifier {
 
     // --- Gate: cooldown ---------------------------------------------------
     if (this.isInCooldown(alert.skillName)) {
-      return { action: 'suppressed', reason: 'cooldown' };
+      const suppressed: NotifyResult = { action: 'suppressed', reason: 'cooldown' };
+      this.recordNotificationEvent(alert, suppressed);
+      return suppressed;
     }
 
     // --- Gate: minimum score drop ----------------------------------------
     const drop = Math.abs(alert.delta);
     if (drop < opts.minScoreDrop) {
-      return { action: 'suppressed', reason: 'below_min_drop' };
+      const suppressed: NotifyResult = { action: 'suppressed', reason: 'below_min_drop' };
+      this.recordNotificationEvent(alert, suppressed);
+      return suppressed;
     }
 
     // --- Render -----------------------------------------------------------
-    const isTTY = Boolean(process.stdout.isTTY);
+    const isTTY = Boolean(process.stderr.isTTY && process.stdin.isTTY);
     const agentDeckAvailable = this.isAgentDeckAvailable();
 
     if (isTTY) {
@@ -164,7 +168,7 @@ export class Notifier {
   // Rendering
   // -----------------------------------------------------------------------
 
-  /** Render the notification as a box-drawing bordered block to stdout. */
+  /** Render the notification as a box-drawing bordered block to stderr. */
   private renderBox(
     alert: DegradationAlert,
     agentDeckAvailable: boolean,
@@ -262,6 +266,13 @@ export class Notifier {
     timeoutMs: number,
   ): Promise<string> {
     return new Promise<string>((resolve) => {
+      let didResolve = false;
+      const settle = (value: string): void => {
+        if (didResolve) return;
+        didResolve = true;
+        resolve(value);
+      };
+
       const rl: ReadlineInterface = createInterface({
         input: process.stdin,
         output: process.stderr,
@@ -273,7 +284,7 @@ export class Notifier {
           `${ANSI.dim}(auto-dismissed after ${timeoutMs / 1000}s -- skipping)${ANSI.reset}\n`,
         );
         rl.close();
-        resolve('3');
+        settle('3');
       }, timeoutMs);
 
       const prompt = `${ANSI.cyan}Choose [1/2/3]:${ANSI.reset} `;
@@ -290,22 +301,22 @@ export class Notifier {
           process.stderr.write(
             `${ANSI.gray}agent-deck not installed -- treating as skip${ANSI.reset}\n`,
           );
-          resolve('3');
+          settle('3');
           return;
         }
 
         if (trimmed === '1' || trimmed === '2' || trimmed === '3') {
-          resolve(trimmed);
+          settle(trimmed);
         } else {
           // Invalid input -- default to skip
-          resolve('3');
+          settle('3');
         }
       });
 
       // Handle stream closing (e.g. piped input ends)
       rl.once('close', () => {
         clearTimeout(timer);
-        resolve('3');
+        settle('3');
       });
     });
   }
@@ -325,7 +336,7 @@ export class Notifier {
   ): NotifyResult {
     switch (choice) {
       case '1':
-        return this.spawnBackgroundOptimization(alert, agentDeckAvailable);
+        return this.spawnBackgroundOptimization(alert, agentDeckAvailable, opts);
       case '2':
         return this.getResumeCommand(alert);
       case '3':
@@ -340,12 +351,13 @@ export class Notifier {
   private spawnBackgroundOptimization(
     alert: DegradationAlert,
     agentDeckAvailable: boolean,
+    opts: NotificationOptions,
   ): NotifyResult {
     if (!agentDeckAvailable) {
       process.stderr.write(
         `${ANSI.gray}agent-deck not found. Install it for background optimization.${ANSI.reset}\n`,
       );
-      return this.skip(alert.skillName, alert.currentScore, this.defaults.cooldownSeconds);
+      return this.skip(alert.skillName, alert.currentScore, opts.cooldownSeconds);
     }
 
     const sessionName = `pos-optimize-${alert.skillName}`;
@@ -370,7 +382,7 @@ export class Notifier {
       process.stderr.write(
         `${ANSI.red}Failed to spawn agent-deck session. Use option 2 for manual fix.${ANSI.reset}\n`,
       );
-      return this.skip(alert.skillName, alert.currentScore, this.defaults.cooldownSeconds);
+      return this.skip(alert.skillName, alert.currentScore, opts.cooldownSeconds);
     }
   }
 

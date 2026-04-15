@@ -245,8 +245,8 @@ export class MetricsStore {
     `);
 
     this.stmtInsertDegradation = this.db.prepare(`
-      INSERT INTO degradation_events (skill_name, score, threshold, timestamp)
-      VALUES (@skill_name, @score, @threshold, @timestamp)
+      INSERT INTO degradation_events (skill_name, score, threshold, notified, resolved, timestamp)
+      VALUES (@skill_name, @score, @threshold, @notified, @resolved, @timestamp)
     `);
 
     this.stmtInsertOptimization = this.db.prepare(`
@@ -368,6 +368,8 @@ export class MetricsStore {
       skill_name: event.skill_name,
       score: event.score,
       threshold: event.threshold,
+      notified: event.notified ? 1 : 0,
+      resolved: event.resolved ? 1 : 0,
       timestamp: event.timestamp,
     });
   }
