@@ -12,7 +12,7 @@
  * - Falls back gracefully if `tessl compare-skill-model-performance` is unavailable
  */
 
-import { execSync } from 'node:child_process';
+import { execFileSync } from 'node:child_process';
 import { MetricsStore } from './metrics-store.js';
 
 // ---------------------------------------------------------------------------
@@ -134,15 +134,14 @@ export class CrossModelEval {
   classifyCompatibility(
     results: ModelEvalResult[],
   ): Compatibility {
-    const lowPasses = results.some(
-      (r) => r.model.costTier === 'low' && r.score >= PASS_THRESHOLD,
-    );
-    const midPasses = results.some(
-      (r) => r.model.costTier === 'medium' && r.score >= PASS_THRESHOLD,
-    );
-    const highPasses = results.some(
-      (r) => r.model.costTier === 'high' && r.score >= PASS_THRESHOLD,
-    );
+    const tierPasses = (tier: ModelConfig['costTier']): boolean => {
+      const tierResults = results.filter(r => r.model.costTier === tier);
+      return tierResults.length > 0 && tierResults.every(r => r.score >= PASS_THRESHOLD);
+    };
+
+    const lowPasses = tierPasses('low');
+    const midPasses = tierPasses('medium');
+    const highPasses = tierPasses('high');
 
     if (lowPasses && midPasses && highPasses) return 'universal';
     if (midPasses && highPasses) return 'mid-tier+';
@@ -177,7 +176,7 @@ export class CrossModelEval {
       'Skill'.length,
       ...results.map((r) => r.skillName.length),
     );
-    const scoreColWidth = 7; // " 100  " padded
+    const scoreColWidth = Math.max(7, ...results[0].results.map(r => r.model.name.length + 2));
     const compatColWidth = Math.max(
       'Compat'.length,
       ...results.map((r) => r.compatibility.length),
@@ -246,33 +245,40 @@ export class CrossModelEval {
     compatibility: Compatibility,
   ): string {
     switch (compatibility) {
-      case 'universal':
+      case 'universal': {
+        const lowTierModel = results.find(r => r.model.costTier === 'low');
+        const lowTierLabel = lowTierModel?.model.name ?? 'low-tier model(s)';
         return (
           `"${skillName}" works across all models. ` +
-          `Consider using Haiku for cost efficiency.`
+          `Consider using ${lowTierLabel} for cost efficiency.`
         );
+      }
 
       case 'mid-tier+': {
-        const haikuFailures =
-          results.find((r) => r.model.costTier === 'low')?.failedScenarios ??
-          [];
+        const lowTierResults = results.filter(r => r.model.costTier === 'low');
+        const lowTierLabel = lowTierResults.length > 0
+          ? lowTierResults.map(r => r.model.name).join(', ')
+          : 'low-tier model(s)';
+        const lowTierFailures = lowTierResults.flatMap(r => r.failedScenarios);
         const failList =
-          haikuFailures.length > 0 ? haikuFailures.join(', ') : '(unknown)';
+          lowTierFailures.length > 0 ? lowTierFailures.join(', ') : '(unknown)';
         return (
-          `"${skillName}" fails on Haiku (${haikuFailures.length} scenario(s)). ` +
+          `"${skillName}" fails on ${lowTierLabel} (${lowTierFailures.length} scenario(s)). ` +
           `Review these failures to make the skill more portable: ${failList}`
         );
       }
 
       case 'opus-only': {
-        const nonOpusFailures = results
+        const highTierModel = results.find(r => r.model.costTier === 'high');
+        const highTierLabel = highTierModel?.model.name ?? 'high-tier model(s)';
+        const nonHighFailures = results
           .filter((r) => r.model.costTier !== 'high')
           .flatMap((r) => r.failedScenarios);
-        const unique = [...new Set(nonOpusFailures)];
+        const unique = [...new Set(nonHighFailures)];
         const failList =
           unique.length > 0 ? unique.join(', ') : '(unknown)';
         return (
-          `"${skillName}" only passes on Opus. ` +
+          `"${skillName}" only passes on ${highTierLabel}. ` +
           `This skill likely relies on advanced reasoning or nuanced instruction-following. ` +
           `Consider simplifying instructions or adding explicit step-by-step guidance ` +
           `for cheaper models. Failed scenarios: ${failList}`
@@ -343,7 +349,7 @@ export class CrossModelEval {
     if (this._hasTesslCompare !== undefined) return this._hasTesslCompare;
 
     try {
-      execSync('tessl compare-skill-model-performance --help', {
+      execFileSync('tessl', ['compare-skill-model-performance', '--help'], {
         stdio: 'pipe',
         timeout: 5_000,
       });
@@ -364,11 +370,18 @@ export class CrossModelEval {
     model: ModelConfig,
   ): RawEvalOutput {
     try {
-      const stdout = execSync(
-        `tessl compare-skill-model-performance --scenarios ${this.shellEscape(scenariosPath)} --model ${this.shellEscape(model.modelId)} --json`,
+      const stdout = execFileSync(
+        'tessl',
+        ['compare-skill-model-performance', '--scenarios', scenariosPath, '--model', model.modelId, '--json'],
         { encoding: 'utf-8', timeout: 300_000, stdio: ['pipe', 'pipe', 'pipe'] },
       );
-      return this.parseTesslOutput(stdout);
+      const result = this.parseTesslOutput(stdout);
+      // If parsing produced a 0-score parse-error, treat it as a failure
+      // so we fall back to sequential eval.
+      if (result.score === 0 && result.failures.some(f => f.startsWith('parse-error'))) {
+        throw new Error('compare output could not be parsed');
+      }
+      return result;
     } catch {
       // If compare fails, fall through to sequential eval
       return this.runTesslEval(_skillName, scenariosPath, model);
@@ -385,8 +398,9 @@ export class CrossModelEval {
     model: ModelConfig,
   ): RawEvalOutput {
     try {
-      const stdout = execSync(
-        `tessl eval --scenarios ${this.shellEscape(scenariosPath)} --model ${this.shellEscape(model.modelId)} --json`,
+      const stdout = execFileSync(
+        'tessl',
+        ['eval', '--scenarios', scenariosPath, '--model', model.modelId, '--json'],
         { encoding: 'utf-8', timeout: 300_000, stdio: ['pipe', 'pipe', 'pipe'] },
       );
       return this.parseTesslOutput(stdout);
@@ -531,8 +545,4 @@ export class CrossModelEval {
     return `\x1b[31m${text}\x1b[0m`; // red
   }
 
-  /** Escape a string for safe shell interpolation. */
-  private shellEscape(str: string): string {
-    return `'${str.replace(/'/g, "'\\''")}'`;
-  }
 }
