@@ -95,6 +95,7 @@ function migrate(): void {
   console.log(`  Found ${scores.length} score records in scores.jsonl`);
 
   let importedScores = 0;
+  let scoreFailures = 0;
   for (const s of scores) {
     const evalScore: EvalScore = {
       skill_name: s.skill,
@@ -107,6 +108,7 @@ function migrate(): void {
       store.recordEvalScore(evalScore);
       importedScores++;
     } catch (err) {
+      scoreFailures++;
       console.warn(`  Failed to import score record: ${JSON.stringify(s)}`, err);
     }
   }
@@ -119,6 +121,7 @@ function migrate(): void {
   );
 
   let importedDegradations = 0;
+  let degradationFailures = 0;
   for (const d of degradations) {
     const event: DegradationEvent = {
       skill_name: d.skill,
@@ -130,6 +133,7 @@ function migrate(): void {
       store.recordDegradation(event);
       importedDegradations++;
     } catch (err) {
+      degradationFailures++;
       console.warn(
         `  Failed to import degradation record: ${JSON.stringify(d)}`,
         err,
@@ -138,9 +142,22 @@ function migrate(): void {
   }
   console.log(`  Imported ${importedDegradations} degradation records`);
 
-  // --- Rename originals ---
-  markMigrated(SCORES_FILE);
-  markMigrated(DEGRADATIONS_FILE);
+  // --- Rename originals (only if ALL records imported successfully) ---
+  if (scoreFailures === 0) {
+    markMigrated(SCORES_FILE);
+  } else {
+    console.warn(
+      `  ${scoreFailures} score records failed to import from ${SCORES_FILE}. File NOT renamed.`,
+    );
+  }
+
+  if (degradationFailures === 0) {
+    markMigrated(DEGRADATIONS_FILE);
+  } else {
+    console.warn(
+      `  ${degradationFailures} degradation records failed to import from ${DEGRADATIONS_FILE}. File NOT renamed.`,
+    );
+  }
 
   store.close();
   console.log('Migration complete.');

@@ -219,12 +219,18 @@ export class MetricsStore {
   }
 
   private migrate(): void {
-    const current = this.getSchemaVersion();
+    const currentVersion = this.getSchemaVersion();
+
+    const runMigration = this.db.transaction(
+      (m: { version: number; sql: string }) => {
+        this.db.exec(m.sql);
+        this.setSchemaVersion(m.version);
+      },
+    );
 
     for (const migration of MIGRATIONS) {
-      if (migration.version > current) {
-        this.db.exec(migration.sql);
-        this.setSchemaVersion(migration.version);
+      if (migration.version > currentVersion) {
+        runMigration(migration);
       }
     }
   }
@@ -313,27 +319,35 @@ export class MetricsStore {
     `);
 
     this.stmtDailyAggregates = this.db.prepare(`
+      WITH dates AS (
+        SELECT DISTINCT date(timestamp) AS date FROM eval_scores
+          WHERE skill_name = @skill_name AND timestamp >= @since
+        UNION
+        SELECT DISTINCT date(timestamp) FROM invocations
+          WHERE skill_name = @skill_name AND timestamp >= @since
+        UNION
+        SELECT DISTINCT date(timestamp) FROM degradation_events
+          WHERE skill_name = @skill_name AND timestamp >= @since
+      )
       SELECT
-        date(e.timestamp) AS date,
-        AVG(e.score) AS avg_score,
-        COALESCE(i.invocation_count, 0) AS invocation_count,
-        COALESCE(d.degradation_count, 0) AS degradation_count
-      FROM eval_scores e
-      LEFT JOIN (
-        SELECT date(timestamp) AS d, COUNT(*) AS invocation_count
-        FROM invocations
-        WHERE skill_name = @skill_name AND timestamp >= @since
-        GROUP BY date(timestamp)
-      ) i ON i.d = date(e.timestamp)
-      LEFT JOIN (
-        SELECT date(timestamp) AS d, COUNT(*) AS degradation_count
-        FROM degradation_events
-        WHERE skill_name = @skill_name AND timestamp >= @since
-        GROUP BY date(timestamp)
-      ) d ON d.d = date(e.timestamp)
-      WHERE e.skill_name = @skill_name AND e.timestamp >= @since
-      GROUP BY date(e.timestamp)
-      ORDER BY date(e.timestamp) ASC
+        d.date,
+        COALESCE(
+          (SELECT AVG(score) FROM eval_scores
+           WHERE skill_name = @skill_name AND date(timestamp) = d.date),
+          0
+        ) AS avg_score,
+        COALESCE(
+          (SELECT COUNT(*) FROM invocations
+           WHERE skill_name = @skill_name AND date(timestamp) = d.date),
+          0
+        ) AS invocation_count,
+        COALESCE(
+          (SELECT COUNT(*) FROM degradation_events
+           WHERE skill_name = @skill_name AND date(timestamp) = d.date),
+          0
+        ) AS degradation_count
+      FROM dates d
+      ORDER BY d.date ASC
     `);
   }
 
