@@ -121,11 +121,11 @@ Generate 5-8 eval scenarios covering these MANDATORY categories:
 
 | Category | What to test | Example |
 |----------|-------------|---------|
-| **Happy path** (1-2) | Standard use case the skill was designed for | "Given a well-defined request matching the skill's trigger, does it follow all steps?" |
-| **Edge case** (1-2) | Boundary conditions: empty input, very long input, special characters, minimal context | "Given an invocation with no additional context, does the skill ask for clarification rather than guessing?" |
-| **Failure mode** (1) | Missing dependencies, unavailable tools, broken input | "When a required tool is unavailable, does the skill degrade gracefully rather than hallucinate results?" |
-| **Ambiguity** (1-2) | Vague, underspecified, or contradictory input | "Given a request that could match two different workflows, does the skill disambiguate before proceeding?" |
-| **Adversarial** (1) | Input designed to bypass the skill's constraints or rationalization guards | "Given a request that pressures the skill to skip a mandatory step, does it refuse?" |
+| **`happy-path`** (1-2) | Standard use case the skill was designed for | "Given a well-defined request matching the skill's trigger, does it follow all steps?" |
+| **`edge-case`** (1-2) | Boundary conditions: empty input, very long input, special characters, minimal context | "Given an invocation with no additional context, does the skill ask for clarification rather than guessing?" |
+| **`failure-mode`** (1) | Missing dependencies, unavailable tools, broken input | "When a required tool is unavailable, does the skill degrade gracefully rather than hallucinate results?" |
+| **`ambiguity`** (1-2) | Vague, underspecified, or contradictory input | "Given a request that could match two different workflows, does the skill disambiguate before proceeding?" |
+| **`adversarial`** (1) | Input designed to bypass the skill's constraints or rationalization guards | "Given a request that pressures the skill to skip a mandatory step, does it refuse?" |
 
 Each scenario MUST include:
 - **Name**: Short identifier (kebab-case)
@@ -164,7 +164,7 @@ Options:
 
 ### 6. Capture Baseline Score
 
-Run `tessl eval --quick` with the approved scenarios against the skill.
+Run `tessl eval --quick --scenarios <scenarios_path>` using the exact scenarios file that will be written in step 9.
 
 - Show progress: "Capturing baseline... this may take 30-60 seconds."
 - If `tessl` is not available: warn user, ask if they want to proceed without baseline (score will be recorded as `null`)
@@ -181,12 +181,14 @@ If `--dry-run` was specified, display the full summary (skill path, scenarios, b
 
 Write to `~/.proof-of-skill/monitored-skills.json`:
 
+**Important:** Write the absolute path (resolved from `$HOME`) into the JSON, not `~`. Most JSON consumers treat `~` as a literal character, not as a home directory reference.
+
 ```json
 {
   "skills": {
     "<skill-name>": {
       "skill_path": "<resolved-path-from-step-2>",
-      "scenarios_path": "~/.proof-of-skill/scenarios/<skill-name>.yaml",
+      "scenarios_path": "/home/<user>/.proof-of-skill/scenarios/<skill-name>.yaml",
       "baseline_score": <score-or-null>,
       "baseline_date": "<ISO-8601-timestamp>",
       "threshold": 85,
@@ -288,12 +290,12 @@ These constraints layer progressively to ensure monitoring quality:
 2. **Locate**: Found at `skills/create-skill/SKILL.md`
 3. **Analyze**: Extracted purpose (TDD skill creation), 8 steps, 5 quality gates, 10 rationalization entries
 4. **Generate Scenarios**: 6 scenarios across 5 categories:
-   - Happy path: "User requests a well-scoped skill with clear requirements"
-   - Happy path: "User provides a skill name and detailed scenario descriptions"
-   - Edge case: "User provides only a skill name with no context"
-   - Failure mode: "tessl is not installed or not authenticated"
-   - Ambiguity: "User describes a skill that overlaps with 2 existing skills"
-   - Adversarial: "User requests a skill that bundles 5 unrelated concerns"
+   - happy-path: "User requests a well-scoped skill with clear requirements"
+   - happy-path: "User provides a skill name and detailed scenario descriptions"
+   - edge-case: "User provides only a skill name with no context"
+   - failure-mode: "tessl is not installed or not authenticated"
+   - ambiguity: "User describes a skill that overlaps with 2 existing skills"
+   - adversarial: "User requests a skill that bundles 5 unrelated concerns"
 5. **Approve**: User reviews and approves scenarios (may edit)
 6. **Baseline**: `tessl eval --quick` -> score: 86%
 7. **Dry-run gate**: Not dry-run, proceed to writes
