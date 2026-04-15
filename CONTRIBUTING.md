@@ -267,7 +267,9 @@ tessl eval run --all
 tessl skill review skills/create-skill/SKILL.md
 ```
 
-**Prerequisites:** [git](https://git-scm.com/), [Claude Code](https://docs.anthropic.com/en/docs/claude-code), and [devflow](https://github.com/AndreJorgeLopes/devflow).
+**Prerequisites:** [git](https://git-scm.com/), [Claude Code](https://docs.anthropic.com/en/docs/claude-code), [tessl](https://github.com/AndreJorgeLopes/tessl), and [devflow](https://github.com/AndreJorgeLopes/devflow).
+
+- **tessl** — Skill evaluation framework. Used for running pressure scenarios and measuring skill quality (`tessl eval run`). Install via `npm install -g tessl` or follow the [tessl README](https://github.com/AndreJorgeLopes/tessl#readme).
 
 ---
 
