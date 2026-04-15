@@ -1,0 +1,18 @@
+{
+  "name": "proof-of-skill",
+  "version": "0.1.0",
+  "description": "TDD framework for AI agent skills — measure, monitor, and improve skill quality",
+  "type": "module",
+  "scripts": {
+    "build": "tsc",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "better-sqlite3": "^11.7.0"
+  },
+  "devDependencies": {
+    "@types/better-sqlite3": "^7.6.12",
+    "@types/node": "^22.12.0",
+    "typescript": "^5.7.0"
+  }
+}
