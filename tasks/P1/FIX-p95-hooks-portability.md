@@ -3,7 +3,7 @@ id: FIX-p95-hooks-portability
 title: "Fix macOS portability and jq injection in p95 hook"
 priority: P1
 category: bugfix
-status: open
+status: done
 depends_on:
   - FEAT-p95-hooks
 estimated_effort: S

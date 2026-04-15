@@ -3,7 +3,7 @@ id: FIX-contributing-tessl-prereq
 title: "Add tessl to CONTRIBUTING.md prerequisites"
 priority: P2
 category: docs
-status: open
+status: done
 depends_on:
   - DOCS-contributing
 estimated_effort: XS

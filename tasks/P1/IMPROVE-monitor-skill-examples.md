@@ -3,7 +3,7 @@ id: IMPROVE-monitor-skill-examples
 title: "Add few-shot example and dry-run to monitor-skill"
 priority: P1
 category: improvement
-status: open
+status: done
 depends_on:
   - FEAT-monitor-skill
 estimated_effort: S
