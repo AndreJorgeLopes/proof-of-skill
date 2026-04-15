@@ -43,6 +43,21 @@ debug() {
   fi
 }
 
+# ── Portable timeout wrapper ────────────────────────────────────────────
+# GNU timeout is not available on stock macOS; fall back to gtimeout
+# (from coreutils via Homebrew) or skip the timeout entirely.
+
+run_with_timeout() {
+  local timeout_secs="$1"; shift
+  if command -v timeout &>/dev/null; then
+    timeout "$timeout_secs" "$@"
+  elif command -v gtimeout &>/dev/null; then
+    gtimeout "$timeout_secs" "$@"
+  else
+    "$@"  # No timeout available; run without it
+  fi
+}
+
 # ── Prerequisite checks ─────────────────────────────────────────────────
 
 # Exit early if no monitored skills config exists
@@ -89,7 +104,7 @@ debug "Skill name: $SKILL_NAME"
 
 # ── Check if skill is monitored ──────────────────────────────────────────
 
-SKILL_CONFIG=$(jq -r ".skills[\"$SKILL_NAME\"] // empty" "$CONFIG" 2>/dev/null || true)
+SKILL_CONFIG=$(jq -r --arg name "$SKILL_NAME" '.skills[$name] // empty' "$CONFIG" 2>/dev/null || true)
 
 if [[ -z "$SKILL_CONFIG" ]]; then
   debug "Skill '$SKILL_NAME' is not monitored — exiting"
@@ -103,7 +118,6 @@ debug "Skill '$SKILL_NAME' is monitored"
 SAMPLE_RATE=$(echo "$SKILL_CONFIG" | jq -r ".sample_rate // $DEFAULT_SAMPLE_RATE")
 THRESHOLD=$(echo "$SKILL_CONFIG" | jq -r ".threshold // $DEFAULT_THRESHOLD")
 SCENARIOS_PATH=$(echo "$SKILL_CONFIG" | jq -r '.scenarios_path // empty')
-SKILL_PATH=$(echo "$SKILL_CONFIG" | jq -r '.skill_path // empty')
 
 # Expand ~ in paths
 SCENARIOS_PATH="${SCENARIOS_PATH/#\~/$HOME}"
@@ -160,10 +174,6 @@ run_eval() {
 
   debug "Running eval for '$skill_name'..."
 
-  # Update timestamp immediately to prevent concurrent evals
-  mkdir -p "$PROOF_DIR"
-  date +%s > "$TIMESTAMP_FILE"
-
   # Check tessl is available
   if ! command -v tessl &>/dev/null; then
     debug "tessl not found — skipping eval"
@@ -178,7 +188,7 @@ run_eval() {
 
   # Run the eval with timeout
   local eval_output
-  if eval_output=$(timeout "$eval_timeout" tessl eval --quick --scenarios "$scenarios_path" 2>/dev/null); then
+  if eval_output=$(run_with_timeout "$eval_timeout" tessl eval --quick --scenarios "$scenarios_path" 2>/dev/null); then
     debug "Eval output: $eval_output"
   else
     local exit_code=$?
@@ -205,10 +215,14 @@ run_eval() {
   local timestamp
   timestamp=$(date -u +%Y-%m-%dT%H:%M:%SZ)
   local baseline_score
-  baseline_score=$(echo "$SKILL_CONFIG" | jq -r '.baseline_score // empty')
+  baseline_score=$(echo "$SKILL_CONFIG" | jq -r '.baseline_score // empty' 2>/dev/null || true)
 
   mkdir -p "$(dirname "$SCORES_LOG")"
-  echo "{\"skill\":\"$skill_name\",\"score\":$score,\"threshold\":$threshold,\"baseline_score\":${baseline_score:-null},\"timestamp\":\"$timestamp\",\"sampled\":true}" \
+  jq -n --arg skill "$skill_name" --argjson score "$score" --argjson threshold "$threshold" \
+    --arg baseline "${baseline_score:-}" --arg ts "$timestamp" \
+    '{skill: $skill, score: $score, threshold: $threshold,
+      baseline_score: (if $baseline == "" then null else ($baseline | tonumber) end),
+      timestamp: $ts, sampled: true}' \
     >> "$SCORES_LOG"
 
   debug "Score recorded to $SCORES_LOG"
@@ -216,12 +230,18 @@ run_eval() {
   # Check threshold — write degradation event if below
   if [[ "$score" -lt "$threshold" ]]; then
     local drop=$((threshold - score))
-    echo "{\"skill\":\"$skill_name\",\"score\":$score,\"threshold\":$threshold,\"drop\":$drop,\"timestamp\":\"$timestamp\"}" \
+    jq -n --arg skill "$skill_name" --argjson score "$score" --argjson threshold "$threshold" \
+      --argjson drop "$drop" --arg ts "$timestamp" \
+      '{skill: $skill, score: $score, threshold: $threshold, drop: $drop, timestamp: $ts}' \
       >> "$DEGRADATIONS_LOG"
 
     debug "DEGRADATION: score $score < threshold $threshold (drop: $drop)"
   fi
 }
+
+# Write debounce timestamp BEFORE forking to prevent race conditions
+mkdir -p "$PROOF_DIR"
+date +%s > "$TIMESTAMP_FILE"
 
 # Run eval in a background subshell so it does not block the user
 run_eval "$SKILL_NAME" "$SCENARIOS_PATH" "$THRESHOLD" &
