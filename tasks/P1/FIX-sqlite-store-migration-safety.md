@@ -3,7 +3,7 @@ id: FIX-sqlite-store-migration-safety
 title: "Fix migration safety and type issues in SQLite store"
 priority: P1
 category: bugfix
-status: open
+status: done
 depends_on:
   - FEAT-sqlite-store
 estimated_effort: S
