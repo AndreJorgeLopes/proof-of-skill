@@ -169,6 +169,7 @@ export class MetricsStore {
   private stmtUnresolvedDegradations!: Database.Statement;
   private stmtOptimizationHistory!: Database.Statement;
   private stmtDailyAggregates!: Database.Statement;
+  private stmtEvalSkillNames!: Database.Statement;
 
   /**
    * Open (or create) the metrics database.
@@ -349,6 +350,10 @@ export class MetricsStore {
       FROM dates d
       ORDER BY d.date ASC
     `);
+
+    this.stmtEvalSkillNames = this.db.prepare(`
+      SELECT DISTINCT skill_name FROM eval_scores
+    `);
   }
 
   // -----------------------------------------------------------------------
@@ -515,6 +520,12 @@ export class MetricsStore {
       skill_name: skillName,
       since,
     }) as DailyAggregate[];
+  }
+
+  /** Get distinct skill names that have eval scores recorded. */
+  getEvalSkillNames(): string[] {
+    const rows = this.stmtEvalSkillNames.all() as Array<{ skill_name: string }>;
+    return rows.map((r) => r.skill_name);
   }
 
   // -----------------------------------------------------------------------
