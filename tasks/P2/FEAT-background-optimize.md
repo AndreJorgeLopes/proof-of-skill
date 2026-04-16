@@ -3,7 +3,8 @@ id: FEAT-background-optimize
 title: "Background optimization sessions via agent-deck"
 priority: P2
 category: features
-status: open
+status: done
+pr: https://github.com/AndreJorgeLopes/proof-of-skill/pull/9
 depends_on:
   - FEAT-non-disruptive-notify
 estimated_effort: L

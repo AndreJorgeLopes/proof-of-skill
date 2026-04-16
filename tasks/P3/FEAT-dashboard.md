@@ -3,7 +3,8 @@ id: FEAT-dashboard
 title: "Local static dashboard for skill quality metrics"
 priority: P3
 category: features
-status: open
+status: done
+pr: https://github.com/AndreJorgeLopes/proof-of-skill/pull/11
 depends_on:
   - FEAT-sqlite-store
 estimated_effort: M

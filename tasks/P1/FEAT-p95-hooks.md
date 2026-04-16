@@ -3,7 +3,8 @@ id: FEAT-p95-hooks
 title: "p95 sampling hooks for skill completions"
 priority: P1
 category: features
-status: open
+status: done
+pr: https://github.com/AndreJorgeLopes/proof-of-skill/pull/4
 depends_on:
   - FEAT-monitor-skill
 estimated_effort: M
