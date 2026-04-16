@@ -3,7 +3,8 @@ id: CHORE-ci-pipeline
 title: "GitHub Actions CI pipeline for PR validation"
 priority: P1
 category: chore
-status: open
+status: done
+pr: https://github.com/AndreJorgeLopes/proof-of-skill/pull/12
 depends_on: []
 estimated_effort: S
 files_to_touch:

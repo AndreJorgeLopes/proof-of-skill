@@ -3,7 +3,8 @@ id: TEST-eval-monitor-skill
 title: "Create eval scenarios for /monitor-skill"
 priority: P2
 category: testing
-status: open
+status: done
+pr: https://github.com/AndreJorgeLopes/proof-of-skill/pull/13
 depends_on:
   - FEAT-monitor-skill
 estimated_effort: S

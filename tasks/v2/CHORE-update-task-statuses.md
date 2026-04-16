@@ -3,7 +3,8 @@ id: CHORE-update-task-statuses
 title: "Update v1.0 task statuses to reflect completed PRs"
 priority: P1
 category: chore
-status: open
+status: done
+pr: https://github.com/AndreJorgeLopes/proof-of-skill/pull/14
 depends_on: []
 estimated_effort: S
 files_to_touch:

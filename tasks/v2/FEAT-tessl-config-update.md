@@ -3,7 +3,8 @@ id: FEAT-tessl-config-update
 title: "Update tessl.json to include monitor-skill"
 priority: P1
 category: features
-status: open
+status: done
+pr: https://github.com/AndreJorgeLopes/proof-of-skill/pull/13
 depends_on:
   - FEAT-monitor-skill
 estimated_effort: XS

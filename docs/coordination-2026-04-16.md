@@ -61,11 +61,11 @@ graph LR
 
 | Task ID | Priority | Description | Status |
 |---------|----------|-------------|--------|
-| CHORE-ci-pipeline | P1 | GitHub Actions CI for PR validation | In Progress (PR pending) |
-| CHORE-update-task-statuses | P1 | Update v1.0 task statuses | Done (this PR) |
-| CHORE-merge-strategy | P1 | Document PR merge order | Done (task file) |
-| FEAT-tessl-config-update | P1 | Add monitor-skill to tessl.json | In Progress (PR pending) |
-| TEST-eval-monitor-skill | P2 | Eval scenarios for /monitor-skill | In Progress (PR pending) |
+| CHORE-ci-pipeline | P1 | GitHub Actions CI for PR validation | Done (PR #12) |
+| CHORE-update-task-statuses | P1 | Update v1.0 task statuses | Done (PR #14) |
+| CHORE-merge-strategy | P1 | Document PR merge order | Done (PR #14) |
+| FEAT-tessl-config-update | P1 | Add monitor-skill to tessl.json | Done (PR #13) |
+| TEST-eval-monitor-skill | P2 | Eval scenarios for /monitor-skill | Done (PR #13) |
 | TEST-unit-coverage | P2 | Unit tests for TypeScript modules | Open (future) |
 
 ### 3. PR Reviews
