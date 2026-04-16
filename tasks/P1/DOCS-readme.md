@@ -3,7 +3,8 @@ id: DOCS-readme
 title: "Polished README with demos, architecture, and comparison"
 priority: P1
 category: docs
-status: open
+status: done
+note: completed directly on main branch
 depends_on: []
 estimated_effort: S
 files_to_touch:
