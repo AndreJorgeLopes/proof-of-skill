@@ -1,0 +1,80 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  validate:
+    name: Validate
+    runs-on: ubuntu-latest
+    timeout-minutes: 2
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      # ── Shell scripts ────────────────────────────────────────────────
+      - name: Install shellcheck
+        run: sudo apt-get update -qq && sudo apt-get install -y -qq shellcheck
+
+      - name: Lint shell scripts
+        run: shellcheck install.sh
+
+      # ── JSON validation ──────────────────────────────────────────────
+      - name: Validate tessl.json
+        run: python3 -c "import json, sys; json.load(open('tessl.json')); print('tessl.json is valid JSON')"
+
+      # ── SKILL.md frontmatter ─────────────────────────────────────────
+      - name: Validate SKILL.md frontmatter
+        run: |
+          status=0
+          for skill_file in skills/*/SKILL.md; do
+            [ -f "$skill_file" ] || continue
+            echo "Checking $skill_file ..."
+
+            # Extract YAML frontmatter (between first pair of ---)
+            frontmatter=$(awk '/^---$/{n++; next} n==1{print} n==2{exit}' "$skill_file")
+
+            if [ -z "$frontmatter" ]; then
+              echo "  ERROR: no YAML frontmatter found"
+              status=1
+              continue
+            fi
+
+            # Check for required fields
+            if ! echo "$frontmatter" | grep -qE '^name:'; then
+              echo "  ERROR: missing 'name' field in frontmatter"
+              status=1
+            fi
+            if ! echo "$frontmatter" | grep -qE '^description:'; then
+              echo "  ERROR: missing 'description' field in frontmatter"
+              status=1
+            fi
+
+            if [ "$status" -eq 0 ]; then
+              echo "  OK"
+            fi
+          done
+
+          if [ "$status" -ne 0 ]; then
+            echo ""
+            echo "FAIL: one or more SKILL.md files have invalid frontmatter"
+            exit 1
+          fi
+
+          echo ""
+          echo "All SKILL.md files have valid frontmatter."
+
+      # ── Tessl eval (optional) ────────────────────────────────────────
+      - name: Run tessl eval (optional)
+        continue-on-error: true
+        run: |
+          if command -v tessl &>/dev/null; then
+            echo "tessl found, running evaluation..."
+            tessl eval
+          else
+            echo "tessl not available — skipping evaluation"
+          fi
