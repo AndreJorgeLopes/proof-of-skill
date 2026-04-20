@@ -163,7 +163,9 @@ Ask: "Approve these scenarios? You can: (1) approve as-is, (2) edit specific sce
 
 Create the directory `~/.proof-of-skill/scenarios/` if it does not exist.
 
-Write scenarios to `~/.proof-of-skill/scenarios/<skill-name>.yaml` in tessl eval format:
+Write scenarios to `~/.proof-of-skill/scenarios/<skill-name>.yaml` in tessl eval format.
+
+**Before writing:** Verify the scenario YAML schema matches what `tessl eval` expects by running `tessl eval --help` or checking tessl docs. If the schema differs from the format below, adapt to match tessl's expected format. The format below is the default — treat it as a starting point, not gospel.
 
 ```yaml
 skill: <skill-name>
