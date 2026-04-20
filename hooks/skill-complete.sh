@@ -23,10 +23,6 @@ debug() {
 PROOF_DIR="${PROOF_OF_SKILL_DIR:-$HOME/.proof-of-skill}"
 CONFIG="$PROOF_DIR/monitored-skills.json"
 
-# Load defaults from config/default.yaml sibling (best-effort)
-SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-DEFAULT_CONFIG="$SCRIPT_DIR/../config/default.yaml"
-
 DEFAULT_SAMPLE_RATE=20
 DEFAULT_THRESHOLD=85
 DEFAULT_MIN_INTERVAL=300
@@ -54,7 +50,7 @@ if ! command -v jq &>/dev/null; then
 fi
 
 # Check if this skill is monitored
-SKILL_CONFIG=$(jq -r ".skills[\"$SKILL_NAME\"] // empty" "$CONFIG" 2>/dev/null || true)
+SKILL_CONFIG=$(jq -r --arg name "$SKILL_NAME" '.skills[$name] // empty' "$CONFIG" 2>/dev/null || true)
 if [[ -z "$SKILL_CONFIG" ]]; then
   debug "Skill '$SKILL_NAME' is not monitored — exiting"
   exit 0
@@ -101,6 +97,7 @@ debug "Sampled! Running eval for '$SKILL_NAME'"
 # Everything below here runs in a subshell so the hook returns immediately.
 
 _run_eval() {
+  set +e
   SCENARIOS_PATH=$(echo "$SKILL_CONFIG" | jq -r '.scenarios_path // empty')
   THRESHOLD=$(echo "$SKILL_CONFIG" | jq -r '.threshold // empty')
   THRESHOLD="${THRESHOLD:-$DEFAULT_THRESHOLD}"
@@ -150,20 +147,26 @@ _run_eval() {
 
   TIMESTAMP=$(date -u +%Y-%m-%dT%H:%M:%SZ)
 
-  # Record score
-  echo "{\"skill\":\"$SKILL_NAME\",\"score\":$SCORE,\"timestamp\":\"$TIMESTAMP\",\"sampled\":true}" \
+  # Record score (use jq for safe JSON construction)
+  jq -n --arg skill "$SKILL_NAME" --argjson score "$SCORE" --arg ts "$TIMESTAMP" \
+    '{skill: $skill, score: $score, timestamp: $ts, sampled: true}' \
     >> "$PROOF_DIR/scores.jsonl"
 
   # Record degradation if below threshold
   if [[ "$SCORE" -lt "$THRESHOLD" ]]; then
     debug "Score $SCORE < threshold $THRESHOLD — recording degradation"
     BASELINE_SCORE=$(echo "$SKILL_CONFIG" | jq -r '.baseline_score // empty')
-    DROP=""
     if [[ -n "$BASELINE_SCORE" ]]; then
       DROP=$((BASELINE_SCORE - SCORE))
+      jq -n --arg skill "$SKILL_NAME" --argjson score "$SCORE" --argjson threshold "$THRESHOLD" \
+        --argjson baseline "$BASELINE_SCORE" --argjson drop "$DROP" --arg ts "$TIMESTAMP" \
+        '{skill: $skill, score: $score, threshold: $threshold, baseline_score: $baseline, drop: $drop, timestamp: $ts}' \
+        >> "$PROOF_DIR/degradations.jsonl"
+    else
+      jq -n --arg skill "$SKILL_NAME" --argjson score "$SCORE" --argjson threshold "$THRESHOLD" --arg ts "$TIMESTAMP" \
+        '{skill: $skill, score: $score, threshold: $threshold, baseline_score: null, drop: null, timestamp: $ts}' \
+        >> "$PROOF_DIR/degradations.jsonl"
     fi
-    echo "{\"skill\":\"$SKILL_NAME\",\"score\":$SCORE,\"threshold\":$THRESHOLD,\"baseline_score\":${BASELINE_SCORE:-null},\"drop\":${DROP:-null},\"timestamp\":\"$TIMESTAMP\"}" \
-      >> "$PROOF_DIR/degradations.jsonl"
   fi
 
   # Update debounce timestamp
