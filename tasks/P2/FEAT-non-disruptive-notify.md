@@ -3,7 +3,8 @@ id: FEAT-non-disruptive-notify
 title: "Non-disruptive degradation notifications"
 priority: P2
 category: features
-status: open
+status: in-review
+pr: "#7"
 depends_on:
   - FEAT-p95-hooks
 estimated_effort: M

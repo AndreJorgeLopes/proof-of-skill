@@ -3,7 +3,8 @@ id: FEAT-monitor-skill
 title: "/monitor-skill command with auto/manual scenarios"
 priority: P1
 category: features
-status: open
+status: in-review
+pr: "#15 (canonical), #2 (superseded)"
 depends_on: []
 estimated_effort: M
 files_to_touch:
