@@ -64,7 +64,8 @@ debug "Skill '$SKILL_NAME' is monitored — evaluating sampling"
 MIN_INTERVAL=$(echo "$SKILL_CONFIG" | jq -r '.min_interval_seconds // empty' 2>/dev/null || true)
 MIN_INTERVAL="${MIN_INTERVAL:-$DEFAULT_MIN_INTERVAL}"
 
-TIMESTAMP_FILE="$PROOF_DIR/last-eval-${SKILL_NAME}.timestamp"
+SAFE_SKILL_NAME="${SKILL_NAME//[^a-zA-Z0-9._-]/_}"
+TIMESTAMP_FILE="$PROOF_DIR/last-eval-${SAFE_SKILL_NAME}.timestamp"
 
 if [[ -f "$TIMESTAMP_FILE" ]]; then
   LAST_EVAL=$(cat "$TIMESTAMP_FILE" 2>/dev/null || echo "0")
@@ -82,6 +83,11 @@ fi
 
 SAMPLE_RATE=$(echo "$SKILL_CONFIG" | jq -r '.sample_rate // empty' 2>/dev/null || true)
 SAMPLE_RATE="${SAMPLE_RATE:-$DEFAULT_SAMPLE_RATE}"
+
+# Guard against division by zero if config has sample_rate: 0
+if [[ "$SAMPLE_RATE" -lt 1 ]]; then
+  SAMPLE_RATE=20
+fi
 
 if [[ "${PROOF_OF_SKILL_SAMPLE:-}" != "force" ]]; then
   RANDOM_NUM=$((RANDOM % SAMPLE_RATE))
@@ -129,11 +135,23 @@ _run_eval() {
       return 0
     }
   else
-    # macOS may not have timeout; fall back to bare eval
-    EVAL_OUTPUT=$(tessl eval --quick --scenarios "$SCENARIOS_PATH" 2>/dev/null) || {
-      debug "tessl eval failed (exit $?)"
+    # macOS may not have timeout; portable fallback using background PID + sleep + kill
+    tessl eval --quick --scenarios "$SCENARIOS_PATH" 2>/dev/null > /tmp/tessl-eval-$$.out &
+    local EVAL_PID=$!
+    ( sleep "$EVAL_TIMEOUT" && kill "$EVAL_PID" 2>/dev/null ) &
+    local WATCHDOG_PID=$!
+    if wait "$EVAL_PID" 2>/dev/null; then
+      kill "$WATCHDOG_PID" 2>/dev/null || true
+      wait "$WATCHDOG_PID" 2>/dev/null || true
+      EVAL_OUTPUT=$(cat /tmp/tessl-eval-$$.out 2>/dev/null)
+      rm -f /tmp/tessl-eval-$$.out
+    else
+      kill "$WATCHDOG_PID" 2>/dev/null || true
+      wait "$WATCHDOG_PID" 2>/dev/null || true
+      rm -f /tmp/tessl-eval-$$.out
+      debug "tessl eval failed or timed out"
       return 0
-    }
+    fi
   fi
 
   # Parse score from eval output (last line, extract number)
@@ -147,8 +165,8 @@ _run_eval() {
 
   TIMESTAMP=$(date -u +%Y-%m-%dT%H:%M:%SZ)
 
-  # Record score (use jq for safe JSON construction)
-  jq -n --arg skill "$SKILL_NAME" --argjson score "$SCORE" --arg ts "$TIMESTAMP" \
+  # Record score (use jq for safe JSON construction; SAFE_SKILL_NAME for filesystem-safe key)
+  jq -n --arg skill "$SAFE_SKILL_NAME" --argjson score "$SCORE" --arg ts "$TIMESTAMP" \
     '{skill: $skill, score: $score, timestamp: $ts, sampled: true}' \
     >> "$PROOF_DIR/scores.jsonl"
 
@@ -158,22 +176,23 @@ _run_eval() {
     BASELINE_SCORE=$(echo "$SKILL_CONFIG" | jq -r '.baseline_score // empty')
     if [[ -n "$BASELINE_SCORE" ]]; then
       DROP=$((BASELINE_SCORE - SCORE))
-      jq -n --arg skill "$SKILL_NAME" --argjson score "$SCORE" --argjson threshold "$THRESHOLD" \
+      jq -n --arg skill "$SAFE_SKILL_NAME" --argjson score "$SCORE" --argjson threshold "$THRESHOLD" \
         --argjson baseline "$BASELINE_SCORE" --argjson drop "$DROP" --arg ts "$TIMESTAMP" \
         '{skill: $skill, score: $score, threshold: $threshold, baseline_score: $baseline, drop: $drop, timestamp: $ts}' \
         >> "$PROOF_DIR/degradations.jsonl"
     else
-      jq -n --arg skill "$SKILL_NAME" --argjson score "$SCORE" --argjson threshold "$THRESHOLD" --arg ts "$TIMESTAMP" \
+      jq -n --arg skill "$SAFE_SKILL_NAME" --argjson score "$SCORE" --argjson threshold "$THRESHOLD" --arg ts "$TIMESTAMP" \
         '{skill: $skill, score: $score, threshold: $threshold, baseline_score: null, drop: null, timestamp: $ts}' \
         >> "$PROOF_DIR/degradations.jsonl"
     fi
   fi
 
-  # Update debounce timestamp
-  date +%s > "$TIMESTAMP_FILE"
-
   debug "Eval recorded for '$SKILL_NAME'"
 }
+
+# Update debounce timestamp BEFORE forking to prevent race condition
+# where two rapid invocations both pass the debounce check
+date +%s > "$TIMESTAMP_FILE"
 
 # Run in background so the hook does not block the user
 _run_eval &
