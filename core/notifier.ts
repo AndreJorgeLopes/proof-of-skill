@@ -19,7 +19,7 @@ import { MetricsStore } from './metrics-store.js';
 import { resolve, dirname } from 'node:path';
 import { readFileSync, writeFileSync, existsSync, mkdirSync } from 'node:fs';
 import { homedir } from 'node:os';
-import { execSync } from 'node:child_process';
+import { execFileSync } from 'node:child_process';
 import { createInterface, Interface as ReadlineInterface } from 'node:readline';
 
 // ---------------------------------------------------------------------------
@@ -370,10 +370,10 @@ export class Notifier {
     ].join(' ');
 
     try {
-      execSync(
-        `agent-deck create --name ${shellEscape(sessionName)} --prompt ${shellEscape(prompt)} --background`,
-        { stdio: 'inherit', timeout: 15_000 },
-      );
+      execFileSync('agent-deck', ['create', '--name', sessionName, '--prompt', prompt, '--background'], {
+        stdio: 'inherit',
+        timeout: 15_000,
+      });
       process.stderr.write(
         `\n${ANSI.green}Background optimization started: session ${sessionName}${ANSI.reset}\n`,
       );
@@ -390,7 +390,8 @@ export class Notifier {
    * Option 2: Print a claude --resume command for manual investigation.
    */
   private getResumeCommand(alert: DegradationAlert): NotifyResult {
-    const command = `claude --resume "Skill '${alert.skillName}' scored ${alert.currentScore}/${alert.threshold}. Investigate the eval failures and fix the skill."`;
+    const escapedName = alert.skillName.replace(/'/g, "'\\''");
+    const command = `claude --resume 'Skill ${escapedName} scored ${alert.currentScore}/${alert.threshold}. Investigate the eval failures and fix the skill.'`;
 
     process.stderr.write(
       `\n${ANSI.green}Run this command to investigate:${ANSI.reset}\n`,
@@ -464,8 +465,8 @@ export class Notifier {
         notified: result.action !== 'suppressed',
         timestamp: alert.timestamp,
       });
-    } catch {
-      // Non-critical -- do not let a store error break the notification flow.
+    } catch (err) {
+      process.stderr.write(`${ANSI.dim}(notification recording failed: ${err})${ANSI.reset}\n`);
     }
   }
 
@@ -476,7 +477,7 @@ export class Notifier {
   /** Check whether agent-deck CLI is available on the PATH. */
   private isAgentDeckAvailable(): boolean {
     try {
-      execSync('command -v agent-deck', { stdio: 'ignore', timeout: 3_000 });
+      execFileSync('which', ['agent-deck'], { stdio: 'ignore', timeout: 3_000 });
       return true;
     } catch {
       return false;
@@ -494,7 +495,3 @@ function stripAnsi(s: string): string {
   return s.replace(/\x1b\[[0-9;]*m/g, '');
 }
 
-/** Minimal shell escaping for execSync arguments. */
-function shellEscape(s: string): string {
-  return `'${s.replace(/'/g, "'\\''")}'`;
-}

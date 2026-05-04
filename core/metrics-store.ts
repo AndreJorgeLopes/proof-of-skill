@@ -143,9 +143,40 @@ interface Migration {
   sql: string;
 }
 
+const SCHEMA_V2 = `
+-- Widen INTEGER score columns to REAL so fractional scores survive round-trips.
+-- SQLite ALTER TABLE cannot change column types, so we create new columns,
+-- copy data, drop the old columns, and rename.
+-- (SQLite >= 3.35.0 supports DROP COLUMN.)
+
+-- eval_scores: score INTEGER -> score REAL
+ALTER TABLE eval_scores ADD COLUMN score_real REAL;
+UPDATE eval_scores SET score_real = score;
+ALTER TABLE eval_scores DROP COLUMN score;
+ALTER TABLE eval_scores RENAME COLUMN score_real TO score;
+
+-- degradation_events: score INTEGER -> score REAL, threshold INTEGER -> threshold REAL
+ALTER TABLE degradation_events ADD COLUMN score_real REAL;
+ALTER TABLE degradation_events ADD COLUMN threshold_real REAL;
+UPDATE degradation_events SET score_real = score, threshold_real = threshold;
+ALTER TABLE degradation_events DROP COLUMN score;
+ALTER TABLE degradation_events DROP COLUMN threshold;
+ALTER TABLE degradation_events RENAME COLUMN score_real TO score;
+ALTER TABLE degradation_events RENAME COLUMN threshold_real TO threshold;
+
+-- optimization_events: trigger_score INTEGER -> trigger_score REAL, result_score INTEGER -> result_score REAL
+ALTER TABLE optimization_events ADD COLUMN trigger_score_real REAL;
+ALTER TABLE optimization_events ADD COLUMN result_score_real REAL;
+UPDATE optimization_events SET trigger_score_real = trigger_score, result_score_real = result_score;
+ALTER TABLE optimization_events DROP COLUMN trigger_score;
+ALTER TABLE optimization_events DROP COLUMN result_score;
+ALTER TABLE optimization_events RENAME COLUMN trigger_score_real TO trigger_score;
+ALTER TABLE optimization_events RENAME COLUMN result_score_real TO result_score;
+`;
+
 const MIGRATIONS: Migration[] = [
   { version: 1, sql: SCHEMA_V1 },
-  // Future migrations are appended here.
+  { version: 2, sql: SCHEMA_V2 },
 ];
 
 // ---------------------------------------------------------------------------
@@ -207,8 +238,12 @@ export class MetricsStore {
         .prepare('SELECT MAX(version) AS v FROM schema_version')
         .get() as { v: number | null } | undefined;
       return row?.v ?? 0;
-    } catch {
-      return 0;
+    } catch (err: unknown) {
+      // Only swallow "no such table" — anything else is a real error.
+      if (err instanceof Error && err.message.includes('no such table')) {
+        return 0;
+      }
+      throw err;
     }
   }
 
@@ -477,7 +512,12 @@ export class MetricsStore {
 
   /** Get all unresolved degradation events across all skills. */
   getUnresolvedDegradations(): DegradationEvent[] {
-    return this.stmtUnresolvedDegradations.all() as DegradationEvent[];
+    const rows = this.stmtUnresolvedDegradations.all() as Array<Record<string, unknown>>;
+    return rows.map((row) => ({
+      ...row,
+      notified: Boolean(row.notified),
+      resolved: Boolean(row.resolved),
+    })) as DegradationEvent[];
   }
 
   /** Get optimization history for a skill (most recent first). */
@@ -503,6 +543,20 @@ export class MetricsStore {
       skill_name: skillName,
       since,
     }) as DailyAggregate[];
+  }
+
+  // -----------------------------------------------------------------------
+  // Transaction support
+  // -----------------------------------------------------------------------
+
+  /**
+   * Run a function inside a SQLite transaction.
+   *
+   * Commits on success, rolls back on throw. Useful for external consumers
+   * that need atomic multi-step writes (e.g. record score + resolve degradation).
+   */
+  transaction<T>(fn: () => T): T {
+    return this.db.transaction(fn)();
   }
 
   // -----------------------------------------------------------------------
