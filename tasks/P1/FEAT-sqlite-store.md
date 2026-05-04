@@ -3,7 +3,7 @@ id: FEAT-sqlite-store
 title: "Embedded SQLite metrics store"
 priority: P1
 category: features
-status: open
+status: done
 depends_on:
   - FEAT-p95-hooks
 estimated_effort: M
