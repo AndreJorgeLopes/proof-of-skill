@@ -143,9 +143,67 @@ interface Migration {
   sql: string;
 }
 
+// V2: Change score columns from INTEGER to REAL for fractional precision.
+// SQLite doesn't support ALTER COLUMN, so we recreate affected tables.
+const SCHEMA_V2 = `
+-- eval_scores: score INTEGER -> REAL
+CREATE TABLE eval_scores_new (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  skill_name TEXT NOT NULL,
+  score REAL NOT NULL,
+  scenario_count INTEGER,
+  eval_mode TEXT NOT NULL DEFAULT 'quick',
+  timestamp TEXT NOT NULL,
+  created_at TEXT NOT NULL DEFAULT (datetime('now'))
+);
+INSERT INTO eval_scores_new (id, skill_name, score, scenario_count, eval_mode, timestamp, created_at)
+  SELECT id, skill_name, score, scenario_count, eval_mode, timestamp, created_at FROM eval_scores;
+DROP TABLE eval_scores;
+ALTER TABLE eval_scores_new RENAME TO eval_scores;
+CREATE INDEX IF NOT EXISTS idx_eval_scores_skill_ts
+  ON eval_scores(skill_name, timestamp);
+
+-- degradation_events: score INTEGER -> REAL, threshold INTEGER -> REAL
+CREATE TABLE degradation_events_new (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  skill_name TEXT NOT NULL,
+  score REAL NOT NULL,
+  threshold REAL NOT NULL,
+  notified BOOLEAN NOT NULL DEFAULT 0,
+  resolved BOOLEAN NOT NULL DEFAULT 0,
+  timestamp TEXT NOT NULL,
+  created_at TEXT NOT NULL DEFAULT (datetime('now'))
+);
+INSERT INTO degradation_events_new (id, skill_name, score, threshold, notified, resolved, timestamp, created_at)
+  SELECT id, skill_name, score, threshold, notified, resolved, timestamp, created_at FROM degradation_events;
+DROP TABLE degradation_events;
+ALTER TABLE degradation_events_new RENAME TO degradation_events;
+CREATE INDEX IF NOT EXISTS idx_degradation_skill
+  ON degradation_events(skill_name, resolved);
+
+-- optimization_events: trigger_score INTEGER -> REAL, result_score INTEGER -> REAL
+CREATE TABLE optimization_events_new (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  skill_name TEXT NOT NULL,
+  trigger_score REAL NOT NULL,
+  result_score REAL,
+  optimization_type TEXT NOT NULL,
+  session_id TEXT,
+  duration_seconds INTEGER,
+  timestamp TEXT NOT NULL,
+  created_at TEXT NOT NULL DEFAULT (datetime('now'))
+);
+INSERT INTO optimization_events_new (id, skill_name, trigger_score, result_score, optimization_type, session_id, duration_seconds, timestamp, created_at)
+  SELECT id, skill_name, trigger_score, result_score, optimization_type, session_id, duration_seconds, timestamp, created_at FROM optimization_events;
+DROP TABLE optimization_events;
+ALTER TABLE optimization_events_new RENAME TO optimization_events;
+CREATE INDEX IF NOT EXISTS idx_optimization_skill
+  ON optimization_events(skill_name, timestamp);
+`;
+
 const MIGRATIONS: Migration[] = [
   { version: 1, sql: SCHEMA_V1 },
-  // Future migrations are appended here.
+  { version: 2, sql: SCHEMA_V2 },
 ];
 
 // ---------------------------------------------------------------------------
@@ -197,6 +255,19 @@ export class MetricsStore {
   }
 
   // -----------------------------------------------------------------------
+  // Helpers
+  // -----------------------------------------------------------------------
+
+  /** Convert SQLite 0/1 integers to proper JS booleans for typed rows. */
+  private mapBooleans<T>(row: T, ...fields: string[]): T {
+    const result = { ...row } as any;
+    for (const f of fields) {
+      if (f in result) result[f] = Boolean(result[f]);
+    }
+    return result as T;
+  }
+
+  // -----------------------------------------------------------------------
   // Migration system
   // -----------------------------------------------------------------------
 
@@ -207,8 +278,11 @@ export class MetricsStore {
         .prepare('SELECT MAX(version) AS v FROM schema_version')
         .get() as { v: number | null } | undefined;
       return row?.v ?? 0;
-    } catch {
-      return 0;
+    } catch (err: unknown) {
+      if (err instanceof Error && err.message.includes('no such table')) {
+        return 0;
+      }
+      throw err;
     }
   }
 
@@ -458,8 +532,10 @@ export class MetricsStore {
 
     const slope = (n * sumXY - sumX * sumY) / (n * sumX2 - sumX * sumX);
 
-    if (slope > 2) return 'improving';
-    if (slope < -2) return 'declining';
+    // Normalize: total change over the window, not per-index slope
+    const normalizedSlope = slope * (n - 1);
+    if (normalizedSlope > 5) return 'improving';
+    if (normalizedSlope < -5) return 'declining';
     return 'stable';
   }
 
@@ -489,7 +565,8 @@ export class MetricsStore {
 
   /** Get all unresolved degradation events across all skills. */
   getUnresolvedDegradations(): DegradationEvent[] {
-    return this.stmtUnresolvedDegradations.all() as DegradationEvent[];
+    const rows = this.stmtUnresolvedDegradations.all() as DegradationEvent[];
+    return rows.map((r) => this.mapBooleans(r, 'notified', 'resolved'));
   }
 
   /** Get optimization history for a skill (most recent first). */
@@ -520,6 +597,16 @@ export class MetricsStore {
   // -----------------------------------------------------------------------
   // Lifecycle
   // -----------------------------------------------------------------------
+
+  /**
+   * Run a function inside a SQLite transaction.
+   *
+   * If fn throws, the transaction is rolled back and the error is re-thrown.
+   * Returns whatever fn returns.
+   */
+  transaction<T>(fn: () => T): T {
+    return this.db.transaction(fn)();
+  }
 
   /** Close the database connection. */
   close(): void {

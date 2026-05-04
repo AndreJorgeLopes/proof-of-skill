@@ -5,7 +5,8 @@
   "type": "module",
   "scripts": {
     "build": "tsc",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "test": "tsx --test core/**/*.test.ts"
   },
   "dependencies": {
     "better-sqlite3": "^11.7.0"

@@ -96,21 +96,23 @@ function migrate(): void {
 
   let importedScores = 0;
   let scoreFailures = 0;
-  for (const s of scores) {
-    const evalScore: EvalScore = {
-      skill_name: s.skill,
-      score: s.score,
-      scenario_count: s.scenarios,
-      eval_mode: (s.mode === 'full' ? 'full' : 'quick') as 'quick' | 'full',
-      timestamp: s.timestamp,
-    };
-    try {
-      store.recordEvalScore(evalScore);
-      importedScores++;
-    } catch (err) {
-      scoreFailures++;
-      console.warn(`  Failed to import score record: ${JSON.stringify(s)}`, err);
-    }
+  try {
+    store.transaction(() => {
+      for (const s of scores) {
+        const evalScore: EvalScore = {
+          skill_name: s.skill,
+          score: s.score,
+          scenario_count: s.scenarios,
+          eval_mode: (s.mode === 'full' ? 'full' : 'quick') as 'quick' | 'full',
+          timestamp: s.timestamp,
+        };
+        store.recordEvalScore(evalScore);
+        importedScores++;
+      }
+    });
+  } catch (err) {
+    scoreFailures = scores.length - importedScores;
+    console.warn(`  Failed to import score records:`, err);
   }
   console.log(`  Imported ${importedScores} score records`);
 
@@ -122,23 +124,22 @@ function migrate(): void {
 
   let importedDegradations = 0;
   let degradationFailures = 0;
-  for (const d of degradations) {
-    const event: DegradationEvent = {
-      skill_name: d.skill,
-      score: d.score,
-      threshold: d.threshold,
-      timestamp: d.timestamp,
-    };
-    try {
-      store.recordDegradation(event);
-      importedDegradations++;
-    } catch (err) {
-      degradationFailures++;
-      console.warn(
-        `  Failed to import degradation record: ${JSON.stringify(d)}`,
-        err,
-      );
-    }
+  try {
+    store.transaction(() => {
+      for (const d of degradations) {
+        const event: DegradationEvent = {
+          skill_name: d.skill,
+          score: d.score,
+          threshold: d.threshold,
+          timestamp: d.timestamp,
+        };
+        store.recordDegradation(event);
+        importedDegradations++;
+      }
+    });
+  } catch (err) {
+    degradationFailures = degradations.length - importedDegradations;
+    console.warn(`  Failed to import degradation records:`, err);
   }
   console.log(`  Imported ${importedDegradations} degradation records`);
 
