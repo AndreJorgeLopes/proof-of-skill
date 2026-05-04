@@ -3,7 +3,8 @@ id: FEAT-langfuse-adapter
 title: "Langfuse adapter for observability traces"
 priority: P2
 category: features
-status: open
+status: in-review
+pr: "#8"
 depends_on:
   - FEAT-sqlite-store
 estimated_effort: M
