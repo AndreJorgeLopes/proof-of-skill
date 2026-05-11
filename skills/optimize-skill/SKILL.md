@@ -63,8 +63,13 @@ Query Hindsight for memories tagged `optimize-skill`, `tessl`, or the skill's na
 
 ### 3. Baseline
 ```bash
-tessl skill review --json PATH > /tmp/score-baseline.json
+# Resolve TARGET (the arg) into skill_dir up-front: a file's parent dir; a dir as-is.
+TARGET="$1"
+if [[ -d "$TARGET" ]]; then skill_dir="$TARGET"; else skill_dir="$(dirname "$TARGET")"; fi
+
+tessl skill review --json "$skill_dir" > /tmp/score-baseline.json
 SCORE_0=$(jq '.weightedScore // .score' /tmp/score-baseline.json)
+SCORE_PREV=$SCORE_0   # seed the iteration gate (see Step 5)
 ```
 Display SCORE_0 + Tessl's `.suggestions[]` array.
 
@@ -85,22 +90,32 @@ Add Tessl's specific `.suggestions[]` to the list, ranked by their attached impa
 
 ### 5. Iterate
 
-For each candidate, **in order**:
+Walk the ROI-ranked candidate list, one candidate per iteration. `rsync -a` preserves perms + dotfiles, `--delete` makes revert idempotent. Numeric comparison uses `awk` (no `bc` dependency).
 
 ```bash
-ITER=$N; SNAP="/tmp/skill-snap-${ITER}"
-mkdir -p "$SNAP"; cp -R PATH/* "$SNAP/"
+ITER=0
+for candidate in "${CANDIDATES[@]}"; do
+  ITER=$((ITER + 1))
+  [[ $ITER -gt $MAX_ITERS ]] && break
 
-# apply the candidate change
+  SNAP="/tmp/skill-snap-${ITER}"
+  mkdir -p "$SNAP"
+  rsync -a "$skill_dir/" "$SNAP/"                  # snapshot (incl. dotfiles)
 
-tessl skill review --json PATH > /tmp/score-${ITER}.json
-SCORE_N=$(jq '.weightedScore // .score' /tmp/score-${ITER}.json)
+  # apply the candidate change in-place on $skill_dir
 
-if (( $(echo "$SCORE_N >= $SCORE_PREV" | bc -l) )); then
-  SCORE_PREV=$SCORE_N; rm -rf "$SNAP"        # keep
-else
-  cp -R "$SNAP/"* PATH/; rm -rf "$SNAP"      # revert
-fi
+  tessl skill review --json "$skill_dir" > "/tmp/score-${ITER}.json"
+  SCORE_N=$(jq '.weightedScore // .score' "/tmp/score-${ITER}.json")
+
+  # >= comparison; awk avoids the bc dependency
+  if awk -v a="$SCORE_N" -v b="$SCORE_PREV" 'BEGIN { exit !(a >= b) }'; then
+    SCORE_PREV=$SCORE_N
+    rm -rf "$SNAP"                                 # keep
+  else
+    rsync -a --delete "$SNAP/" "$skill_dir/"       # revert (removes new files)
+    rm -rf "$SNAP"
+  fi
+done
 ```
 
 ### 6. Final pass — spec-review via subagent
