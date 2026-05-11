@@ -17,6 +17,8 @@ import Database from 'better-sqlite3';
 import { resolve, dirname } from 'node:path';
 import { mkdirSync, existsSync } from 'node:fs';
 import { homedir } from 'node:os';
+import { createAdapter } from '../adapters/index.js';
+import type { ObservabilityAdapter } from '../adapters/types.js';
 
 // ---------------------------------------------------------------------------
 // Default paths
@@ -154,6 +156,7 @@ const MIGRATIONS: Migration[] = [
 
 export class MetricsStore {
   private db: Database.Database;
+  private adapter: ObservabilityAdapter;
 
   // Prepared statements (lazily initialised after migration)
   private stmtInsertInvocation!: Database.Statement;
@@ -194,6 +197,9 @@ export class MetricsStore {
 
     this.migrate();
     this.prepareStatements();
+
+    // Observability dual-write adapter (Langfuse or noop)
+    this.adapter = createAdapter();
   }
 
   // -----------------------------------------------------------------------
@@ -349,6 +355,16 @@ export class MetricsStore {
       was_sampled: inv.was_sampled ? 1 : 0,
       duration_ms: inv.duration_ms ?? null,
     });
+
+    // Dual-write to observability adapter (fire-and-forget)
+    try {
+      this.adapter.recordTrace({
+        skillName: inv.skill_name,
+        timestamp: inv.timestamp,
+        durationMs: inv.duration_ms,
+        metadata: { wasSampled: inv.was_sampled },
+      }).catch(() => {});
+    } catch {}
   }
 
   /** Record an eval score. */
@@ -360,6 +376,18 @@ export class MetricsStore {
       eval_mode: score.eval_mode,
       timestamp: score.timestamp,
     });
+
+    // Dual-write to observability adapter (fire-and-forget)
+    try {
+      this.adapter.recordScore({
+        traceId: `${score.skill_name}:${score.timestamp}`,
+        skillName: score.skill_name,
+        score: score.score,
+        evalMode: score.eval_mode,
+        scenarioCount: score.scenario_count,
+        timestamp: score.timestamp,
+      }).catch(() => {});
+    } catch {}
   }
 
   /** Record a degradation event (score dropped below threshold). */
@@ -370,6 +398,17 @@ export class MetricsStore {
       threshold: event.threshold,
       timestamp: event.timestamp,
     });
+
+    // Dual-write to observability adapter (fire-and-forget)
+    try {
+      this.adapter.recordEvent({
+        traceId: `${event.skill_name}:${event.timestamp}`,
+        name: 'degradation_detected',
+        skillName: event.skill_name,
+        metadata: { score: event.score, threshold: event.threshold },
+        timestamp: event.timestamp,
+      }).catch(() => {});
+    } catch {}
   }
 
   /** Record an optimization event (auto or manual improvement run). */
@@ -383,6 +422,23 @@ export class MetricsStore {
       duration_seconds: event.duration_seconds ?? null,
       timestamp: event.timestamp,
     });
+
+    // Dual-write to observability adapter (fire-and-forget)
+    try {
+      this.adapter.recordEvent({
+        traceId: `${event.skill_name}:${event.timestamp}`,
+        name: 'optimization_run',
+        skillName: event.skill_name,
+        metadata: {
+          triggerScore: event.trigger_score,
+          resultScore: event.result_score,
+          optimizationType: event.optimization_type,
+          sessionId: event.session_id,
+          durationSeconds: event.duration_seconds,
+        },
+        timestamp: event.timestamp,
+      }).catch(() => {});
+    } catch {}
   }
 
   /** Mark all unresolved degradation events for a skill as resolved. */
@@ -507,8 +563,11 @@ export class MetricsStore {
   // Lifecycle
   // -----------------------------------------------------------------------
 
-  /** Close the database connection. */
-  close(): void {
+  /** Flush the observability adapter and close the database connection. */
+  async close(): Promise<void> {
+    try {
+      await this.adapter.flush();
+    } catch {}
     this.db.close();
   }
 }
