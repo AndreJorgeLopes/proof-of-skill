@@ -54,14 +54,14 @@ Sixth autonomous coordination run. Reviewed all 9 feature PRs (7 parallel review
 |------|--------|----|-------------|
 | DOCS-readme | done | main | ✅ merged |
 | FEAT-monitor-skill | reviewed | #15 | ✅ yes |
-| FEAT-p95-hooks | fixing | #16 | ⏳ after fixes land |
+| FEAT-p95-hooks | reviewed | #16 | ✅ yes (fixes pushed) |
 | FEAT-sqlite-store | reviewed | #5 | ✅ yes |
 
 ### P2 — Enhancement Features
 | Task | Status | PR | Merge-Ready |
 |------|--------|----|-------------|
-| FEAT-non-disruptive-notify | fixing | #7 | ⏳ after fixes land |
-| FEAT-langfuse-adapter | fixing | #8 | ⏳ after fixes land |
+| FEAT-non-disruptive-notify | reviewed | #7 | ✅ yes (fixes pushed) |
+| FEAT-langfuse-adapter | reviewed | #8 | ✅ yes (fixes pushed) |
 | FEAT-background-optimize | reviewed | #9 | ✅ yes |
 | FEAT-persist-optimization-sessions | open | — | new task |
 | FEAT-async-cross-model-eval | open | — | new task |
@@ -71,7 +71,7 @@ Sixth autonomous coordination run. Reviewed all 9 feature PRs (7 parallel review
 |------|--------|----|-------------|
 | DOCS-contributing | reviewed | #3 | ✅ yes |
 | FEAT-cross-model-eval | reviewed | #10 | ✅ yes |
-| FEAT-dashboard | fixing | #11 | ⏳ after fixes land |
+| FEAT-dashboard | reviewed | #11 | ✅ yes (fixes pushed) |
 | FEAT-data-retention | open | — | new task |
 | FEAT-test-coverage | open | — | new task |
 | FEAT-gnap-coordination | open | — | new task |
@@ -83,12 +83,12 @@ graph TD
     PR1["#1 ImgBot"] --> DONE["Merge complete"]
     PR3["#3 CONTRIBUTING ✅"] --> DONE
     PR12["#12 CI pipeline"] --> DONE
-    PR15["#15 monitor-skill ✅"] --> PR16["#16 p95-hooks ⏳"]
+    PR15["#15 monitor-skill ✅"] --> PR16["#16 p95-hooks ✅"]
     PR15 --> PR13["#13 eval scenarios"]
     PR16 --> PR5["#5 SQLite store ✅"]
-    PR16 --> PR7["#7 notifier ⏳"]
-    PR5 --> PR8["#8 Langfuse ⏳"]
-    PR5 --> PR11["#11 dashboard ⏳"]
+    PR16 --> PR7["#7 notifier ✅"]
+    PR5 --> PR8["#8 Langfuse ✅"]
+    PR5 --> PR11["#11 dashboard ✅"]
     PR7 --> PR9["#9 background-opt ✅"]
     PR15 --> PR10["#10 cross-model ✅"]
 
@@ -97,15 +97,15 @@ graph TD
     style PR5 fill:#16a34a,color:#fff
     style PR9 fill:#16a34a,color:#fff
     style PR10 fill:#16a34a,color:#fff
-    style PR16 fill:#f59e0b,color:#000
-    style PR7 fill:#f59e0b,color:#000
-    style PR8 fill:#f59e0b,color:#000
-    style PR11 fill:#f59e0b,color:#000
+    style PR16 fill:#16a34a,color:#fff
+    style PR7 fill:#16a34a,color:#fff
+    style PR8 fill:#16a34a,color:#fff
+    style PR11 fill:#16a34a,color:#fff
 ```
 
 **Unblocked and merge-ready now:** #1, #3, #12, #15
-**Merge-ready after dependency:** #5, #9, #10
-**Pending fixes (pushed May 11):** #7, #8, #11, #16
+**Merge-ready after dependency:** #5, #7, #8, #9, #10, #11, #16
+**All fixes pushed and verified May 11.**
 
 ## Research: Autonomous Coordination Best Practices
 
