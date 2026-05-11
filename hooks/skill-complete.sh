@@ -18,6 +18,30 @@ debug() {
   return 0
 }
 
+# ── Hook installation ───────────────────────────────────────────────────
+
+install_hook() {
+  local settings="${CLAUDE_SETTINGS:-$HOME/.claude/settings.json}"
+  local hook_path
+  hook_path="$(cd "$(dirname "$0")" && pwd)/skill-complete.sh"
+
+  if [[ ! -f "$settings" ]]; then
+    echo '{}' > "$settings"
+  fi
+
+  jq --arg path "$hook_path" \
+    '.hooks["skill-complete"] = {"command": $path, "enabled": true}' \
+    "$settings" > "$settings.tmp" && mv "$settings.tmp" "$settings"
+
+  echo "Hook installed: $hook_path"
+}
+
+# Run install if called with --install flag
+if [[ "${1:-}" == "--install" ]]; then
+  install_hook
+  exit 0
+fi
+
 # ── Configuration ────────────────────────────────────────────────────────
 
 PROOF_DIR="${PROOF_OF_SKILL_DIR:-$HOME/.proof-of-skill}"
@@ -58,13 +82,19 @@ fi
 
 debug "Skill '$SKILL_NAME' is monitored — evaluating sampling"
 
+# Sanitize skill name for filesystem paths (allow only alphanumerics, hyphens, underscores)
+SAFE_SKILL_NAME=$(echo "$SKILL_NAME" | tr -cd 'A-Za-z0-9_-')
+if [[ -z "$SAFE_SKILL_NAME" ]]; then
+  debug "Skill name '$SKILL_NAME' sanitizes to empty — exiting"
+  exit 0
+fi
+
 # ── Debounce ─────────────────────────────────────────────────────────────
 # Skip if we recently ran an eval for this skill.
 
 MIN_INTERVAL=$(echo "$SKILL_CONFIG" | jq -r '.min_interval_seconds // empty' 2>/dev/null || true)
 MIN_INTERVAL="${MIN_INTERVAL:-$DEFAULT_MIN_INTERVAL}"
 
-SAFE_SKILL_NAME="${SKILL_NAME//[^a-zA-Z0-9._-]/_}"
 TIMESTAMP_FILE="$PROOF_DIR/last-eval-${SAFE_SKILL_NAME}.timestamp"
 
 if [[ -f "$TIMESTAMP_FILE" ]]; then
@@ -127,35 +157,36 @@ _run_eval() {
     return 0
   fi
 
-  # Run the eval with timeout
-  EVAL_OUTPUT=""
+  # Run the eval with timeout, capturing output to a secure temp file
+  TMPFILE=$(mktemp /tmp/tessl-eval-XXXXXX)
+  trap 'rm -f "$TMPFILE"' EXIT
+
   if command -v timeout &>/dev/null; then
-    EVAL_OUTPUT=$(timeout "$EVAL_TIMEOUT" tessl eval --quick --scenarios "$SCENARIOS_PATH" 2>/dev/null) || {
+    timeout "$EVAL_TIMEOUT" tessl eval --quick --scenarios "$SCENARIOS_PATH" > "$TMPFILE" 2>/dev/null || {
       debug "tessl eval failed or timed out (exit $?)"
+      rm -f "$TMPFILE"
       return 0
     }
   else
     # macOS may not have timeout; portable fallback using background PID + sleep + kill
-    tessl eval --quick --scenarios "$SCENARIOS_PATH" 2>/dev/null > /tmp/tessl-eval-$$.out &
+    tessl eval --quick --scenarios "$SCENARIOS_PATH" 2>/dev/null > "$TMPFILE" &
     local EVAL_PID=$!
     ( sleep "$EVAL_TIMEOUT" && kill "$EVAL_PID" 2>/dev/null ) &
     local WATCHDOG_PID=$!
-    if wait "$EVAL_PID" 2>/dev/null; then
+    if ! wait "$EVAL_PID" 2>/dev/null; then
       kill "$WATCHDOG_PID" 2>/dev/null || true
       wait "$WATCHDOG_PID" 2>/dev/null || true
-      EVAL_OUTPUT=$(cat /tmp/tessl-eval-$$.out 2>/dev/null)
-      rm -f /tmp/tessl-eval-$$.out
-    else
-      kill "$WATCHDOG_PID" 2>/dev/null || true
-      wait "$WATCHDOG_PID" 2>/dev/null || true
-      rm -f /tmp/tessl-eval-$$.out
+      rm -f "$TMPFILE"
       debug "tessl eval failed or timed out"
       return 0
     fi
+    kill "$WATCHDOG_PID" 2>/dev/null || true
+    wait "$WATCHDOG_PID" 2>/dev/null || true
   fi
 
   # Parse score from eval output (last line, extract number)
-  SCORE=$(echo "$EVAL_OUTPUT" | tail -1 | grep -oE '[0-9]+' | head -1)
+  SCORE=$(tail -1 "$TMPFILE" | grep -oE '[0-9]+' | head -1 || true)
+  rm -f "$TMPFILE"
   if [[ -z "$SCORE" ]]; then
     debug "Could not parse score from eval output"
     return 0
@@ -165,8 +196,8 @@ _run_eval() {
 
   TIMESTAMP=$(date -u +%Y-%m-%dT%H:%M:%SZ)
 
-  # Record score (use jq for safe JSON construction; SAFE_SKILL_NAME for filesystem-safe key)
-  jq -n --arg skill "$SAFE_SKILL_NAME" --argjson score "$SCORE" --arg ts "$TIMESTAMP" \
+  # Record score (use jq for safe JSON construction; use original SKILL_NAME for JSON identity)
+  jq -n --arg skill "$SKILL_NAME" --argjson score "$SCORE" --arg ts "$TIMESTAMP" \
     '{skill: $skill, score: $score, timestamp: $ts, sampled: true}' \
     >> "$PROOF_DIR/scores.jsonl"
 
@@ -176,12 +207,12 @@ _run_eval() {
     BASELINE_SCORE=$(echo "$SKILL_CONFIG" | jq -r '.baseline_score // empty')
     if [[ -n "$BASELINE_SCORE" ]]; then
       DROP=$((BASELINE_SCORE - SCORE))
-      jq -n --arg skill "$SAFE_SKILL_NAME" --argjson score "$SCORE" --argjson threshold "$THRESHOLD" \
+      jq -n --arg skill "$SKILL_NAME" --argjson score "$SCORE" --argjson threshold "$THRESHOLD" \
         --argjson baseline "$BASELINE_SCORE" --argjson drop "$DROP" --arg ts "$TIMESTAMP" \
         '{skill: $skill, score: $score, threshold: $threshold, baseline_score: $baseline, drop: $drop, timestamp: $ts}' \
         >> "$PROOF_DIR/degradations.jsonl"
     else
-      jq -n --arg skill "$SAFE_SKILL_NAME" --argjson score "$SCORE" --argjson threshold "$THRESHOLD" --arg ts "$TIMESTAMP" \
+      jq -n --arg skill "$SKILL_NAME" --argjson score "$SCORE" --argjson threshold "$THRESHOLD" --arg ts "$TIMESTAMP" \
         '{skill: $skill, score: $score, threshold: $threshold, baseline_score: null, drop: null, timestamp: $ts}' \
         >> "$PROOF_DIR/degradations.jsonl"
     fi
