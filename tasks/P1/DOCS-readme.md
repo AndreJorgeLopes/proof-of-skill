@@ -3,7 +3,9 @@ id: DOCS-readme
 title: "Polished README with demos, architecture, and comparison"
 priority: P1
 category: docs
-status: open
+status: done
+pr: "commits 7ec7688, d2b684f, 563cf95 on main"
+review: "APPROVE — all acceptance criteria met via 3 iterative commits"
 depends_on: []
 estimated_effort: S
 files_to_touch:

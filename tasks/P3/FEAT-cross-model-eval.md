@@ -3,7 +3,9 @@ id: FEAT-cross-model-eval
 title: "Cross-model testing across Haiku, Sonnet, Opus"
 priority: P3
 category: features
-status: open
+status: reviewed
+pr: "#10"
+review: "APPROVE — 2 MEDIUM (sync execFileSync in async method, hardcoded threshold). Follow-up task for async migration."
 depends_on:
   - FEAT-monitor-skill
 estimated_effort: L
