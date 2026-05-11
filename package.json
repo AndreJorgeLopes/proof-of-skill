@@ -3,9 +3,6 @@
   "version": "0.1.0",
   "description": "TDD framework for AI agent skills — measure, monitor, and improve skill quality",
   "type": "module",
-  "engines": {
-    "node": ">=18"
-  },
   "scripts": {
     "build": "tsc",
     "typecheck": "tsc --noEmit"
