@@ -3,7 +3,7 @@ id: FEAT-cross-model-eval
 title: "Cross-model testing across Haiku, Sonnet, Opus"
 priority: P3
 category: features
-status: open
+status: done
 depends_on:
   - FEAT-monitor-skill
 estimated_effort: L
