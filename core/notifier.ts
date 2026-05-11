@@ -67,18 +67,25 @@ export type NotifyResult =
 // ANSI helpers
 // ---------------------------------------------------------------------------
 
-const useColor = !process.env['NO_COLOR'];
+function useColor(): boolean {
+  return !process.env['NO_COLOR'];
+}
 
-const ANSI = {
-  reset: useColor ? '\x1b[0m' : '',
-  bold: useColor ? '\x1b[1m' : '',
-  dim: useColor ? '\x1b[2m' : '',
-  yellow: useColor ? '\x1b[33m' : '',
-  red: useColor ? '\x1b[31m' : '',
-  green: useColor ? '\x1b[32m' : '',
-  cyan: useColor ? '\x1b[36m' : '',
-  gray: useColor ? '\x1b[90m' : '',
-} as const;
+function getAnsi() {
+  if (useColor()) {
+    return {
+      yellow: '\x1b[33m',
+      red: '\x1b[31m',
+      green: '\x1b[32m',
+      cyan: '\x1b[36m',
+      gray: '\x1b[90m',
+      dim: '\x1b[2m',
+      bold: '\x1b[1m',
+      reset: '\x1b[0m',
+    };
+  }
+  return { yellow: '', red: '', green: '', cyan: '', gray: '', dim: '', bold: '', reset: '' };
+}
 
 // ---------------------------------------------------------------------------
 // Notifier
@@ -174,6 +181,7 @@ export class Notifier {
     agentDeckAvailable: boolean,
     opts: NotificationOptions,
   ): void {
+    const ANSI = getAnsi();
     const W = 57; // inner width (chars between vertical bars)
     const pad = (s: string, rawLen?: number): string => {
       const len = rawLen ?? stripAnsi(s).length;
@@ -265,6 +273,7 @@ export class Notifier {
     agentDeckAvailable: boolean,
     timeoutMs: number,
   ): Promise<string> {
+    const ANSI = getAnsi();
     return new Promise<string>((resolve) => {
       let didResolve = false;
       const settle = (value: string): void => {
@@ -353,6 +362,7 @@ export class Notifier {
     agentDeckAvailable: boolean,
     opts: NotificationOptions,
   ): NotifyResult {
+    const ANSI = getAnsi();
     if (!agentDeckAvailable) {
       process.stderr.write(
         `${ANSI.gray}agent-deck not found. Install it for background optimization.${ANSI.reset}\n`,
@@ -390,6 +400,7 @@ export class Notifier {
    * Option 2: Print a claude --resume command for manual investigation.
    */
   private getResumeCommand(alert: DegradationAlert): NotifyResult {
+    const ANSI = getAnsi();
     const escapedName = alert.skillName.replace(/'/g, "'\\''");
     const command = `claude --resume 'Skill ${escapedName} scored ${alert.currentScore}/${alert.threshold}. Investigate the eval failures and fix the skill.'`;
 
@@ -457,6 +468,7 @@ export class Notifier {
     alert: DegradationAlert,
     result: NotifyResult,
   ): void {
+    const ANSI = getAnsi();
     try {
       this.store.recordDegradation({
         skill_name: alert.skillName,
