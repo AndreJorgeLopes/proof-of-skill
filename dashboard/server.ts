@@ -129,7 +129,7 @@ function computeNearMissCount(
     const recent = store.getRecentScores(name, 1);
     if (recent.length > 0) {
       const latest = recent[0]!.score;
-      if (latest < threshold && latest >= threshold - margin) {
+      if (latest >= threshold && latest < threshold + margin) {
         count++;
       }
     }
@@ -173,8 +173,8 @@ function buildSkillSummaries(
     const trend = store.getScoreTrend(name, 30);
     const isNearMiss =
       latestScore !== null &&
-      latestScore < threshold &&
-      latestScore >= threshold - NEAR_MISS_MARGIN;
+      latestScore >= threshold &&
+      latestScore < threshold + NEAR_MISS_MARGIN;
 
     return {
       name,
@@ -243,8 +243,16 @@ function serveStatic(res: ServerResponse, filePath: string, contentType: string)
 
 const store = new MetricsStore();
 
+const ALLOWED_PATHS = new Set(['/', '/index.html', '/charts.js', '/api/dashboard']);
+
 const server = createServer((req: IncomingMessage, res: ServerResponse) => {
   const pathname = new URL(req.url ?? '/', 'http://localhost').pathname;
+
+  if (!ALLOWED_PATHS.has(pathname)) {
+    res.writeHead(404, { 'Content-Type': 'text/plain' });
+    res.end('Not found');
+    return;
+  }
 
   if (pathname === '/api/dashboard') {
     try {
@@ -272,9 +280,6 @@ const server = createServer((req: IncomingMessage, res: ServerResponse) => {
     serveStatic(res, resolve(__dirname, 'charts.js'), MIME_TYPES['.js']!);
     return;
   }
-
-  res.writeHead(404, { 'Content-Type': 'text/plain' });
-  res.end('Not found');
 });
 
 server.listen(PORT, () => {
