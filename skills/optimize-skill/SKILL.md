@@ -56,7 +56,7 @@ flowchart TD
 ## Step Details
 
 ### 1. Parse + validate
-Default path: cwd. Default target: plateau. Default max-iters: 4. Verify **`tessl whoami` succeeds — if it reports "not logged in", abort and tell the user to run `tessl login`** (browser auth; cannot be automated). Also verify `jq` is installed, the target SKILL.md exists with valid YAML frontmatter, and you have write access. Abort with a clear remediation hint if any check fails.
+Default path: cwd. Default target: plateau. Default max-iters: 4. Verify **`tessl whoami` succeeds — if it reports "not logged in", abort and tell the user to run `tessl login`** (browser auth; cannot be automated). Also verify `jq` is installed, `TESSL_WORKSPACE` is set (tessl 0.87 requires `--workspace` for `--json` — list via `tessl workspace list`), the target SKILL.md exists with valid YAML frontmatter, and you have write access. Abort with a clear remediation hint if any check fails.
 
 ### 2. Recall
 Query Hindsight for memories tagged `optimize-skill`, `tessl`, or the skill's name. Useful priors: which iteration kinds have regressed before, which Tessl suggestions are unsafe for this skill family.
@@ -67,8 +67,10 @@ Query Hindsight for memories tagged `optimize-skill`, `tessl`, or the skill's na
 TARGET="$1"
 if [[ -d "$TARGET" ]]; then skill_dir="$TARGET"; else skill_dir="$(dirname "$TARGET")"; fi
 
-tessl review run --json "$skill_dir" > /tmp/score-baseline.json
-SCORE_0=$(jq '.weightedScore // .score' /tmp/score-baseline.json)
+# tessl 0.87+: --json requires --workspace; the overall score moved to .review.reviewScore (0–100)
+WORKSPACE="${TESSL_WORKSPACE:?set TESSL_WORKSPACE — your tessl workspace name (see: tessl workspace list)}"
+tessl review run --json --workspace "$WORKSPACE" "$skill_dir" > /tmp/score-baseline.json
+SCORE_0=$(jq '.review.reviewScore // .weightedScore // .score' /tmp/score-baseline.json)
 SCORE_PREV=$SCORE_0   # seed the iteration gate (see Step 5)
 ```
 Display SCORE_0 + Tessl's `.suggestions[]` array.
@@ -104,8 +106,8 @@ for candidate in "${CANDIDATES[@]}"; do
 
   # apply the candidate change in-place on $skill_dir
 
-  tessl review run --json "$skill_dir" > "/tmp/score-${ITER}.json"
-  SCORE_N=$(jq '.weightedScore // .score' "/tmp/score-${ITER}.json")
+  tessl review run --json --workspace "$WORKSPACE" "$skill_dir" > "/tmp/score-${ITER}.json"
+  SCORE_N=$(jq '.review.reviewScore // .weightedScore // .score' "/tmp/score-${ITER}.json")
 
   # >= comparison; awk avoids the bc dependency
   if awk -v a="$SCORE_N" -v b="$SCORE_PREV" 'BEGIN { exit !(a >= b) }'; then
@@ -159,7 +161,7 @@ INPUT
     + Hindsight memories (optional)
   ↓
 BASELINE
-  SCORE_0 = tessl review run --json (read .weightedScore or .score)
+  SCORE_0 = tessl review run --json --workspace $TESSL_WORKSPACE (read .review.reviewScore)
   TIPS_0  = Tessl judge's .suggestions[]
   ↓
 LOOP (≤ max-iters, until plateau confirmed)
