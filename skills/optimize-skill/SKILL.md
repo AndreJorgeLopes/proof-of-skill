@@ -1,6 +1,6 @@
 ---
 name: optimize-skill
-description: Use when iteratively optimizing an existing SKILL.md (or a skill folder with bundle files) — runs a Tessl-gated Ralph loop with snapshot-and-revert protection, never accepts a worse `tessl skill review` score, and stops when no candidate change improves both the score and the structural quality. Triggers for `/optimize-skill PATH`, "make this skill better", "iterate on this SKILL.md", "improve this skill's tessl score".
+description: Use when iteratively optimizing an existing SKILL.md (or a skill folder with bundle files) — runs a Tessl-gated Ralph loop with snapshot-and-revert protection, never accepts a worse `tessl review run` score, and stops when no candidate change improves both the score and the structural quality. Triggers for `/optimize-skill PATH`, "make this skill better", "iterate on this SKILL.md", "improve this skill's tessl score".
 ---
 
 # Optimize Skill — Tessl-gated Ralph loop
@@ -13,7 +13,7 @@ For the empirical evidence, rationalization counters, and common mistakes that b
 
 ## When to Use
 
-- User says `/optimize-skill PATH` or pastes a `tessl skill review` output asking how to score higher
+- User says `/optimize-skill PATH` or pastes a `tessl review run` output asking how to score higher
 - An existing skill scores < 90% and there's reason to believe it could be better
 - After major edits to a skill, to confirm no regression
 
@@ -32,7 +32,7 @@ For the empirical evidence, rationalization counters, and common mistakes that b
 flowchart TD
     A[Parse: path + target + max-iters] --> B[Validate: tessl, jq, SKILL.md, write access]
     B --> C[Recall: Hindsight for prior optimization of this skill/domain]
-    C --> D[Baseline: tessl skill review --json → SCORE_0]
+    C --> D[Baseline: tessl review run --json → SCORE_0]
     D --> E[Show baseline + Tessl suggestions]
     E --> F{Brainstorm first?}
     F -->|yes| G[Invoke superpowers:brainstorming with the tips]
@@ -40,7 +40,7 @@ flowchart TD
     G --> H
     H --> I[Iteration N: snapshot all files in skill dir to /tmp]
     I --> J[Apply ONE candidate change]
-    J --> K[tessl skill review --json → SCORE_N]
+    J --> K[tessl review run --json → SCORE_N]
     K --> L{SCORE_N ≥ SCORE_PREV?}
     L -->|no| M[Revert from snapshot]
     L -->|yes| N[Keep change]
@@ -56,7 +56,7 @@ flowchart TD
 ## Step Details
 
 ### 1. Parse + validate
-Default path: cwd. Default target: plateau. Default max-iters: 4. Verify `tessl whoami` succeeds, `jq` is installed, the target SKILL.md exists with valid YAML frontmatter, and you have write access. Abort with a clear remediation hint if any check fails.
+Default path: cwd. Default target: plateau. Default max-iters: 4. Verify **`tessl whoami` succeeds — if it reports "not logged in", abort and tell the user to run `tessl login`** (browser auth; cannot be automated). Also verify `jq` is installed, the target SKILL.md exists with valid YAML frontmatter, and you have write access. Abort with a clear remediation hint if any check fails.
 
 ### 2. Recall
 Query Hindsight for memories tagged `optimize-skill`, `tessl`, or the skill's name. Useful priors: which iteration kinds have regressed before, which Tessl suggestions are unsafe for this skill family.
@@ -67,7 +67,7 @@ Query Hindsight for memories tagged `optimize-skill`, `tessl`, or the skill's na
 TARGET="$1"
 if [[ -d "$TARGET" ]]; then skill_dir="$TARGET"; else skill_dir="$(dirname "$TARGET")"; fi
 
-tessl skill review --json "$skill_dir" > /tmp/score-baseline.json
+tessl review run --json "$skill_dir" > /tmp/score-baseline.json
 SCORE_0=$(jq '.weightedScore // .score' /tmp/score-baseline.json)
 SCORE_PREV=$SCORE_0   # seed the iteration gate (see Step 5)
 ```
@@ -79,7 +79,7 @@ Apply each in turn until plateau:
 
 | Rank | Candidate | Effort | Regression risk |
 |------|-----------|--------|---|
-| 1 | `tessl skill review --optimize --yes --max-iterations 1 PATH` | zero | **medium** — Tessl's auto-optimizer can regress (see REFERENCE.md) |
+| 1 | `tessl review fix PATH` (automated review-and-fix loop) | zero | **medium** — Tessl's auto-optimizer can regress (see REFERENCE.md) |
 | 2 | Consolidate content repeated 3+ times into one canonical section | low | low |
 | 3 | Extract bundle files (sibling `.md`) for sections >50 lines | medium | low — Tessl can't open siblings, score may plateau; agent UX still wins |
 | 4 | Extract domain-specific content into gated bundles (e.g. `AIRCALL.md`) | medium | low |
@@ -104,7 +104,7 @@ for candidate in "${CANDIDATES[@]}"; do
 
   # apply the candidate change in-place on $skill_dir
 
-  tessl skill review --json "$skill_dir" > "/tmp/score-${ITER}.json"
+  tessl review run --json "$skill_dir" > "/tmp/score-${ITER}.json"
   SCORE_N=$(jq '.weightedScore // .score' "/tmp/score-${ITER}.json")
 
   # >= comparison; awk avoids the bc dependency
@@ -140,7 +140,7 @@ Any failure → revert that iteration. If **G2** fails at end of run → revert 
 ## What we do NOT want / do NOT accept
 
 - **A worse score, ever.** Per G1 + G2 above. Iteration A in the seed run regressed 90→86 and was reverted; that's the canonical pattern.
-- **Trusting `tessl --optimize` without re-scoring.** Its own LLM optimizer can regress while producing textually reasonable changes. Always run a fresh `tessl skill review` and compare.
+- **Trusting `tessl review fix` without re-scoring.** Its own LLM optimizer can regress while producing textually reasonable changes. Always run a fresh `tessl review run` and compare.
 - **Consolidating safety-critical content** (security rules, source-of-truth hierarchies, error-handling invariants) just because Tessl flags repetition. Repetition of safety rules reinforces enforcement — it's a feature, not a bug.
 - **Trusting Tessl's `progressive_disclosure` score literally.** Tessl does not open sibling bundle files. A skill with proper progressive disclosure may still score 2/3 here. Optimize for real agent UX, not the scalar.
 - **Unbounded loops.** Default max-iters = 4. Beyond that, returns diminish and snapshot bloat starts to matter.
@@ -159,14 +159,14 @@ INPUT
     + Hindsight memories (optional)
   ↓
 BASELINE
-  SCORE_0 = tessl skill review --json (read .weightedScore or .score)
+  SCORE_0 = tessl review run --json (read .weightedScore or .score)
   TIPS_0  = Tessl judge's .suggestions[]
   ↓
 LOOP (≤ max-iters, until plateau confirmed)
   for each ROI-ranked candidate:
     snapshot skill_dir → /tmp/skill-snap-N/
     apply candidate
-    SCORE_N = tessl skill review --json
+    SCORE_N = tessl review run --json
     if SCORE_N ≥ SCORE_PREV: keep, advance
     else: revert from snapshot, mark candidate as failing
   ↓
