@@ -1,0 +1,31 @@
+# determinism.promptfooconfig.yaml — copy next to the target skill.
+# One test per Axis B finding. Run:  npx -y promptfoo@latest eval
+# (provider syntax verified working in devflow eval/promptfooconfig.yaml)
+description: <skill-name> determinism assertions
+
+prompts:
+  - '{{input}}'
+
+providers:
+  # exec provider: the command IS embedded in the id after "exec:".
+  # run-skill.sh: exec env CLAUDECODE="" claude --model "${SKILL_EVAL_MODEL:-claude-haiku-4-5-20251001}" --print "$1"
+  - id: 'exec: bash run-skill.sh'
+    label: <skill-name>@head
+
+tests:
+  # Axis B: result block claimed JSON must parse (catches ```json fences)
+  - description: result block is valid JSON
+    vars: { input: '/devflow:<skill-name> <fixture-input>' }
+    assert:
+      - type: not-icontains
+        value: '```'
+      - type: is-json
+
+  # Axis B: pinned-format block — required keys present, no prose
+  - description: required keys present in pinned format
+    vars: { input: '/devflow:<skill-name> <fixture-input>' }
+    assert:
+      - type: regex
+        value: 'Repo:\s|VCS Platform:\s'   # the pinned schema keys
+      - type: not-icontains
+        value: '```'

@@ -1,0 +1,63 @@
+# determinism.promptfooconfig.yaml — self-audit of determinize-skill
+# Run: npx -y promptfoo@latest eval -c determinism.promptfooconfig.yaml
+# from skills/determinize-skill/
+description: determinize-skill determinism assertions (self-audit)
+
+prompts:
+  - '{{input}}'
+
+providers:
+  - id: 'exec: bash run-skill.sh'
+    label: determinize-skill@head
+
+tests:
+  # D4 (Axis B): report starts with the pinned header — no prose preamble
+  - description: report opens with fixed header
+    vars: { input: '/determinize-skill references/pattern-catalog.md' }
+    assert:
+      - type: regex
+        value: '## Determinism Audit:'
+      - type: not-icontains
+        value: "Here is"
+
+  # D4 (Axis B): machine-readable YAML block present with required keys
+  - description: machine-readable findings block is present with schema keys
+    vars: { input: '/determinize-skill references/pattern-catalog.md' }
+    assert:
+      - type: contains
+        value: "### Findings (machine-readable)"
+      - type: contains
+        value: "skill:"
+      - type: contains
+        value: "findings:"
+      - type: regex
+        value: 'axis: (offload|constrain)'
+      - type: regex
+        value: 'severity: (high|medium|low)'
+      - type: regex
+        value: 'effort: (S|M|L)'
+
+  # D5 (Axis B): ROI section uses pinned format
+  - description: ROI section matches pinned format
+    vars: { input: '/determinize-skill references/pattern-catalog.md' }
+    assert:
+      - type: contains
+        value: "### ROI"
+      - type: regex
+        value: 'Top fix: D\d+ \(severity='
+      - type: regex
+        value: 'Order: D\d+'
+
+  # D4 (Axis B): no stray fences outside the intentional YAML code block
+  - description: finding IDs follow D1..Dn pattern only
+    vars: { input: '/determinize-skill references/pattern-catalog.md' }
+    assert:
+      - type: regex
+        value: '\| D[1-9]'
+
+  # D4 (Axis B): Axis column values are constrained to the enum
+  - description: axis values constrained to offload|constrain
+    vars: { input: '/determinize-skill references/pattern-catalog.md' }
+    assert:
+      - type: not-icontains
+        value: "Axis A"   # prose axis labels leak into table — pinned values only
