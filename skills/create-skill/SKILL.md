@@ -138,10 +138,15 @@ Find new rationalizations the agent used to bypass the skill. Add explicit count
 Run `determinize-skill` on the new SKILL.md. It audits both axes — offload an AI step
 to code, and constrain free output format — and emits a `determinism.promptfooconfig.yaml`.
 Apply the ROI-top findings (high severity, low effort first): pin any free-form result
-block, and offload obvious classification/parsing/scoring to bash/regex/`jq`. Keep the
-generated assertions in the skill dir. Skip only genuinely-creative steps (judgment,
-prose) — those stay model-driven. This closes the gap between "scores well" and
-"behaves reproducibly" before validation.
+block, and offload obvious classification/parsing to bash/regex/`jq`. **Before writing
+any new deterministic code, search the determinism-fix lib index
+(`~/.claude/lib/determinism/index.json`) — reuse or `extend` an existing function over
+reinventing.** Every offloaded step obeys the abstain contract (`lib/determinism/CONTRACT.md`):
+exit `0` confident / `10` abstain→AI / `1` error→AI, sound-not-complete, so the AI
+fallback fires only on failure. Keep the generated assertions in the skill dir.
+**Do NOT offload high-risk judgment** (ranking, scoring, typo/status heuristics,
+generation) — a deterministic version is confidently worse; only constrain its output
+format. This closes the gap between "scores well" and "behaves reproducibly".
 
 ### 10. Validation
 

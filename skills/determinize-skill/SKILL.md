@@ -31,6 +31,25 @@ The baseline failure this skill exists to fix: agents only ever do Axis A, write
 bats tests for functions that don't exist yet, and never assert on the skill's
 actual output. **Axis B and output-assertions are mandatory, not optional.**
 
+## Reuse the lib first + the abstain contract
+
+Before writing ANY new deterministic code for an offload fix, search the
+determinism-fix library index (`lib/determinism/index.json`, installed at
+`~/.claude/lib/determinism/`). Match → recommend reuse; near-match → recommend
+`extend`. Reuse/extend over reinventing.
+
+Every offload fix MUST be **sound, not complete** (`lib/determinism/CONTRACT.md`):
+exit `0`=confident, `10`=abstain→AI, `1`=error→AI. Return a value only for provably
+unambiguous input; **abstain on unknown OR ambiguous** so the AI fallback fires only
+on failure, never as a second opinion on a confident answer.
+Caller: `v=$(fn "$x") || v=$(ai_fn "$x")`.
+
+**Risk gate — don't determinize judgment.** Tag each finding `risk: low|medium|high`.
+HIGH = ranking / scoring / typo-heuristics / status-classification / generation — a
+deterministic version is confidently *worse* and can be confidently wrong. For HIGH,
+do NOT offload; only constrain the output format (axis B). Offload only
+parse/classify/count (low/medium, with the abstain contract).
+
 ## Process
 
 ```mermaid
@@ -70,9 +89,9 @@ Emit EXACTLY these sections, in this order, IDs `D1..Dn` in document order:
 ## Determinism Audit: <skill-name>
 
 ### Findings
-| ID | Location | Axis | Severity | Effort | Nondeterminism | Deterministic fix |
-|----|----------|------|----------|--------|----------------|-------------------|
-| D1 | step 1, platform detect | offload | high | S | English "→github/gitlab" classification | `case` on remote URL |
+| ID | Location | Axis | Severity | Effort | Risk | Nondeterminism | Deterministic fix |
+|----|----------|------|----------|--------|------|----------------|-------------------|
+| D1 | step 1, platform detect | offload | high | S | low | English "→github/gitlab" classification | `detect_vcs_platform` (lib) |
 
 ### Findings (machine-readable)
 ```yaml
@@ -83,8 +102,10 @@ findings:
     axis: offload          # offload | constrain
     severity: high         # high | medium | low
     effort: S              # S | M | L
+    risk: low              # low | medium | high (high => do NOT offload, constrain only)
     nondeterminism: "English classification of VCS host"
-    fix: "case statement on remote URL"
+    fix: "reuse lib fn detect_vcs_platform (abstain->AI)"
+    lib_fn: detect_vcs_platform   # or null if new code needed
 ```
 
 ### Assertions → <skill-dir>/determinism.promptfooconfig.yaml
