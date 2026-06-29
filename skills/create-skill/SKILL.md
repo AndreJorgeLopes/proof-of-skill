@@ -52,10 +52,11 @@ flowchart TD
     L --> M{All pass?}
     M -->|no| N[REFACTOR: Close loopholes\nAdd rationalization counters]
     N --> L
-    M -->|yes| O[tessl review run]
+    M -->|yes| DET[Determinism pass: run determinize-skill\napply ROI-top fixes + write assertions]
+    DET --> O[tessl review run]
     O --> P[tessl eval run]
     P --> Q{Score >= 85%?}
-    Q -->|no| S[ralph-loop: diagnose + fix + re-eval]
+    Q -->|no| S[optimize-skill: Tessl-gated loop\nsnapshot+revert + spec-review]
     S --> P
     Q -->|yes| T[Ask user: save global or project-local?]
     T --> U[Commit]
@@ -132,9 +133,19 @@ Run the same scenarios WITH the skill loaded. Every scenario must now pass. If a
 
 Find new rationalizations the agent used to bypass the skill. Add explicit counters. Add to rationalization table. Re-run until bulletproof.
 
+### 9.5 Determinism Pass (mandatory)
+
+Run `determinize-skill` on the new SKILL.md. It audits both axes — offload an AI step
+to code, and constrain free output format — and emits a `determinism.promptfooconfig.yaml`.
+Apply the ROI-top findings (high severity, low effort first): pin any free-form result
+block, and offload obvious classification/parsing/scoring to bash/regex/`jq`. Keep the
+generated assertions in the skill dir. Skip only genuinely-creative steps (judgment,
+prose) — those stay model-driven. This closes the gap between "scores well" and
+"behaves reproducibly" before validation.
+
 ### 10. Validation
 
-**First verify auth:** run `tessl whoami`; if it reports "not logged in", stop and tell the user to run `tessl login` (browser auth — cannot be automated), then resume. Then run `tessl review run` for static quality score (add `--threshold 85` to fail fast below 85%; in headless/`--json` mode also pass `--workspace <name>` — tessl 0.87 requires it, list via `tessl workspace list`, and read the score from `.review.reviewScore`). Run `tessl eval run` for empirical score. If score < 85%, use ralph-loop (auto-diagnose, fix, re-eval) until passing.
+**First verify auth:** run `tessl whoami`; if it reports "not logged in", stop and tell the user to run `tessl login` (browser auth — cannot be automated), then resume. Then run `tessl review run` for static quality score (add `--threshold 85` to fail fast below 85%; in headless/`--json` mode also pass `--workspace <name>` — tessl 0.87 requires it, list via `tessl workspace list`, and read the score from `.review.reviewScore`). Run `tessl eval run` for empirical score. If score < 85%, invoke `optimize-skill` (Tessl-gated loop with snapshot+revert protection — never accepts a worse score — plus a final spec-review pass that catches correctness regressions the score doesn't, e.g. broken bundle refs or hallucinated syntax from the auto-optimizer). Re-run until passing.
 
 ### 11. Save + Commit
 
@@ -148,8 +159,10 @@ Ask user: global (`~/.claude/skills/`) or project-local (`skills/`)? Commit with
 | Discovery | All 5 locations searched |
 | RED baseline | 3+ scenarios run without skill |
 | GREEN verify | All scenarios pass with skill |
+| Determinism pass | determinize-skill run; ROI-top fixes applied; assertions written |
 | tessl review | Static review completed |
 | tessl eval | Score >= 85% |
+| optimize-skill | Run if < 85% (or to lift score); spec-review surfaces no Critical |
 
 ## Rationalizations & Red Flags
 
