@@ -24,9 +24,11 @@ Determinism is for *computable* work only.
 
 ## Severity / effort rubric (fixed, not by feel)
 
-- **Severity high**: wrong result cascades (e.g. platform misdetect → wrong CLI).
-  **medium**: degrades quality but recoverable. **low**: cosmetic/format only.
-- **Effort S**: ≤10 lines, one function. **M**: helper + wiring. **L**: restructures the skill.
+- **Severity** (decision rule, not feel): **high** IFF the nondeterminism can produce
+  a wrong NON-text result (wrong CLI / branch / path / id) that cascades downstream.
+  **medium**: degrades quality but recoverable, or text-only drift. **low**: cosmetic/format.
+- **Effort** (line count, not judgment): **S** = 1–10 lines, one function. **M** = 11–50
+  lines (helper + wiring). **L** = 51+ lines OR modifies 2+ skill sections.
 - **ROI order** = severity desc, then effort asc (high+S first).
 
 ## bats template (Axis A — only after the fix extracts a function)
