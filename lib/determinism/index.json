@@ -1,0 +1,79 @@
+{
+  "$comment": "Registry of deterministic-fix functions. create-skill + determinize-skill consult this BEFORE writing AI for computable work. All functions obey CONTRACT.md (exit 0 confident / 10 abstain / 1 error).",
+  "functions": {
+    "extract_ticket_id": {
+      "file": "functions/extract_ticket_id.sh",
+      "purpose": "Ticket ID from a branch name or free text",
+      "signature": "extract_ticket_id <string> -> stdout id | exit 10 abstain | exit 1 error",
+      "axis": "offload",
+      "risk": "medium",
+      "patterns": ["JIRA PREFIX-123", "#123"],
+      "abstains_on": ["unknown scheme (e.g. 123-abc)", "2+ distinct candidate IDs"],
+      "fallback": "ai_extract_ticket_id",
+      "extends": null,
+      "tests": "test/extract_ticket_id.bats",
+      "used_by": ["resolve-repo", "finish-feature", "review"]
+    },
+    "detect_vcs_platform": {
+      "file": "functions/detect_vcs_platform.sh",
+      "purpose": "Map a git remote URL to a VCS platform",
+      "signature": "detect_vcs_platform <remote-url> -> stdout github|gitlab|bitbucket|azure | exit 10 abstain | exit 1 error",
+      "axis": "offload",
+      "risk": "low",
+      "abstains_on": ["unknown / self-hosted host"],
+      "fallback": "ai_detect_vcs_platform",
+      "extends": null,
+      "tests": "test/detect_vcs_platform.bats",
+      "used_by": ["resolve-repo", "review"]
+    },
+    "extract_repo_group": {
+      "file": "functions/extract_repo_group.sh",
+      "purpose": "Group/subgroup path from a git remote URL (for scoped repo search)",
+      "signature": "extract_repo_group <remote-url> -> stdout group/path | exit 10 abstain | exit 1 error",
+      "axis": "offload",
+      "risk": "medium",
+      "abstains_on": ["URL with no group segment", "unparseable URL"],
+      "fallback": "ai_extract_repo_group",
+      "extends": null,
+      "tests": "test/extract_repo_group.bats",
+      "used_by": ["resolve-repo"]
+    },
+    "is_protected_branch": {
+      "file": "functions/is_protected_branch.sh",
+      "purpose": "Predicate: is this a protected branch (don't commit/push directly)",
+      "signature": "is_protected_branch <branch> -> exit 0 protected | exit 1 not-protected",
+      "axis": "offload",
+      "risk": "low",
+      "abstains_on": [],
+      "fallback": null,
+      "extends": null,
+      "tests": "test/is_protected_branch.bats",
+      "used_by": ["finish-feature"]
+    },
+    "count_commits": {
+      "file": "functions/count_commits.sh",
+      "purpose": "Count commits in a rev-range (git rev-list --count wrapper)",
+      "signature": "count_commits <rev-range> [repo-dir] -> stdout N | exit 1 error",
+      "axis": "offload",
+      "risk": "low",
+      "abstains_on": ["invalid range / not a repo (-> exit 1 -> AI)"],
+      "fallback": null,
+      "extends": null,
+      "tests": "test/count_commits.bats",
+      "used_by": ["finish-feature", "review"]
+    },
+    "score_to_severity": {
+      "file": "functions/score_to_severity.sh",
+      "purpose": "Bucket an integer 0-100 confidence score to a severity label",
+      "signature": "score_to_severity <0-100> -> stdout drop|suggestion|important|critical | exit 1 error",
+      "axis": "offload",
+      "risk": "low",
+      "note": "ONLY the bucketing is deterministic; the score itself stays AI-produced (do NOT determinize the judgment).",
+      "abstains_on": ["non-integer / out of range (-> exit 1)"],
+      "fallback": null,
+      "extends": null,
+      "tests": "test/score_to_severity.bats",
+      "used_by": ["review"]
+    }
+  }
+}
