@@ -36,19 +36,23 @@ actual output. **Axis B and output-assertions are mandatory, not optional.**
 ```mermaid
 flowchart TD
     A[Parse PATH → resolve SKILL.md + skill-name] --> B[Read target in full]
-    B --> C[Scan with the pattern catalog\nPATTERNS.md — both axes, every step]
+    B --> C[Scan every step\nwith the catalog\nbelow — both axes]
     C --> D[For each hit: classify axis,\nseverity, effort, write the fix]
     D --> E[Generate assertions:\nAxis A → bats; Axis B → promptfoo on stdout]
     E --> F[Emit FIXED-SCHEMA report\n+ machine-readable findings YAML]
     F --> G[ROI rank: severity / effort → name the top fix]
     G --> H[Write determinism.promptfooconfig.yaml\nnext to the target skill]
+    H --> I[Run promptfoo config\nconfirm all assertions pass\nbefore reporting ROI]
 ```
+
+Walk the target skill step by step; for EACH step check all catalog patterns below.
+Do not stop at the first finding per step.
 
 ## Coverage — scan every step against the catalog
 
-Read `PATTERNS.md` (sibling) for the full catalog + assertion recipes. Walk the
-target skill step by step; for EACH step check all catalog patterns. Do not stop at
-the first finding per step. The seven recurring nondeterminism patterns:
+Full catalog (9 patterns + severity/effort rubric + bats template):
+[`references/pattern-catalog.md`](references/pattern-catalog.md). The seven most
+common nondeterminism patterns:
 
 1. **English classification** ("→ github / gitlab") → `case`/lookup table (Axis A)
 2. **Fuzzy quantifier** ("most specific", "significant", "clear winner") → fixed rule/threshold (Axis A)
@@ -100,10 +104,20 @@ axis B on yourself. Severity ∈ {high,medium,low}; effort ∈ {S,M,L}; axis ∈
   target skill — an `exec:` provider runs the skill headlessly (`claude --print`,
   `CLAUDECODE=""`) and asserts on stdout: `is-json` for result blocks claimed to be
   JSON, `regex`/`contains` for pinned formats, `not-icontains: "```"` to forbid
-  fences. See PATTERNS.md for the template.
+  fences. Use the template below, one test per Axis B finding.
 - **Axis A (when a step becomes a function):** emit bats tests, but ONLY for code the
   fix actually extracts — never for functions that don't exist yet. Mark them
   "apply after refactor".
+
+The `determinism.promptfooconfig.yaml` template lives in
+[`references/promptfoo-template.yaml`](references/promptfoo-template.yaml) — copy it
+next to the target skill, one test per Axis B finding.
+
+**Verify before reporting ROI:** run `promptfoo eval -c determinism.promptfooconfig.yaml`
+from the skill dir and confirm every assertion passes. Only a config whose assertions
+run green counts as a shipped artifact — a config you wrote but never ran is an
+unasserted claim. If a test fails, fix the assertion (or the underlying Axis B fix)
+until all pass, then report ROI.
 
 ## Few-shot
 
@@ -116,22 +130,13 @@ varies (prose, fences, reordered fields). Fix: pin the block + "output only the
 block, no prose, no fences". Assert (promptfoo): `not-icontains "```"` + `regex` for
 the required keys.
 
-## Common Mistakes
+## Common Mistakes — STOP if you think...
 
-- Doing only Axis A. Output-format determinism (Axis B) is half the value.
-- Writing bats for functions that don't exist yet instead of promptfoo on stdout.
-- A different report shape each run — defeats version comparison. Use the fixed schema.
-- Stopping at one finding per step. Scan all 7 patterns per step.
-- Flagging genuinely-creative steps (brainstorming, prose review) as "nondeterministic" — those SHOULD stay model-driven. Only flag computable work.
-
-## Red Flags — STOP if you think...
-
-| Thought | Reality |
+| Thought / mistake | Reality |
 |---------|---------|
-| "Found the deterministic spots, done" | Did you scan BOTH axes on EVERY step? |
-| "Bats tests cover it" | The harness asserts on skill *output*. Generate promptfoo too. |
-| "Output format is fine, it's just text" | Free text → unassertable → undiffable. Axis B applies. |
-| "I'll structure the report however fits" | Fixed schema or two runs can't be compared. |
-| "This creative step could be deterministic" | Don't determinize judgment/creativity. Only computable work. |
+| "Found the deterministic spots, done" — doing only Axis A | Output-format determinism (Axis B) is half the value. Scan BOTH axes on EVERY step. |
+| "Bats tests cover it" — bats for functions that don't exist yet | The harness asserts on skill *output*. Generate promptfoo too; emit bats ONLY for code the fix actually extracts. |
+| "Output format is fine, it's just text" — free-format output | Free text → unassertable → undiffable. Axis B applies. A different report shape each run defeats version comparison — use the fixed schema. |
+| "This creative step could be deterministic" | Don't determinize judgment/creativity (brainstorming, prose review). Only flag computable work. |
 
 $ARGUMENTS
