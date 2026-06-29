@@ -134,7 +134,7 @@ Find new rationalizations the agent used to bypass the skill. Add explicit count
 
 ### 10. Validation
 
-**First verify auth:** run `tessl whoami`; if it reports "not logged in", stop and tell the user to run `tessl login` (browser auth — cannot be automated), then resume. Then run `tessl review run` for static quality score (add `--threshold 85` to fail fast below 85%). Run `tessl eval run` for empirical score. If score < 85%, use ralph-loop (auto-diagnose, fix, re-eval) until passing.
+**First verify auth:** run `tessl whoami`; if it reports "not logged in", stop and tell the user to run `tessl login` (browser auth — cannot be automated), then resume. Then run `tessl review run` for static quality score (add `--threshold 85` to fail fast below 85%; in headless/`--json` mode also pass `--workspace <name>` — tessl 0.87 requires it, list via `tessl workspace list`, and read the score from `.review.reviewScore`). Run `tessl eval run` for empirical score. If score < 85%, use ralph-loop (auto-diagnose, fix, re-eval) until passing.
 
 ### 11. Save + Commit
 
