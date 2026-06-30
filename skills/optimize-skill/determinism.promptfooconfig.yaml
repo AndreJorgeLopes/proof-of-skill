@@ -1,0 +1,40 @@
+# determinism.promptfooconfig.yaml — Axis B assertions for optimize-skill
+# Assertions: D5 (baseline display) and D6 (final report format).
+# Run: npx -y promptfoo@latest eval -c determinism.promptfooconfig.yaml
+# Requires: run-skill.sh in this dir + SKILL_EVAL_MODEL env (default: haiku)
+# Note: skill invokes `tessl` — tests use a dry-run/abort fixture so tessl
+# auth failure is itself the observable output, not a real optimization loop.
+description: optimize-skill determinism assertions (Axis B — D5, D6)
+
+prompts:
+  - '{{input}}'
+
+providers:
+  - id: 'exec: bash run-skill.sh'
+    label: optimize-skill@head
+
+tests:
+  # D5 — baseline abort output: when tessl is not logged in, the error
+  # must be a single-line pinned message, not free prose or fenced blocks.
+  - description: "D5 — validation-failure output: no fences, no prose, machine-readable"
+    vars:
+      input: "/optimize-skill /nonexistent-path-that-does-not-exist"
+    assert:
+      - type: not-icontains
+        value: '```'
+      - type: regex
+        # Must contain a clear abort reason (path/tessl/jq/access)
+        value: '(not found|does not exist|tessl|jq|write access|TESSL_WORKSPACE)'
+
+  # D6 — final report: when skill completes (or aborts at validate), the
+  # summary line must follow the pinned key=value schema, not free narration.
+  # Uses a fixture skill dir (this skill itself) to trigger at least step 1.
+  - description: "D6 — report format contains pinned keys (no prose reordering)"
+    vars:
+      input: "/optimize-skill /Users/andrejorgelopes/dev/proof-of-skill/skills/optimize-skill"
+    assert:
+      - type: not-icontains
+        value: '```'
+      # These keys must appear literally in any path through the skill
+      - type: regex
+        value: '(score|SCORE|tessl|Baseline|baseline|validation|Validate|abort|Abort)'
