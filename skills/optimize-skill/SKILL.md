@@ -161,6 +161,22 @@ Dispatch a `general-purpose` Agent subagent to review the optimized skill vs bas
 ### 7. Retain + report
 Write new learnings to Hindsight (`uvx hindsight-embed memory retain default "..." --context learnings`). Final report: initial → final score, iterations kept / reverted / total, file sizes before/after, new bundle files, subagent findings count, /tmp snapshot pointers.
 
+### 8. Feed the final score to devflow trace-review (best-effort)
+
+Push the optimized skill's quality score to the local Langfuse via devflow's feeder so its
+week-over-week trend accrues. Best-effort: a no-op if devflow or Langfuse is absent, and it
+never blocks the optimize run. It runs one `tessl review run` pass for a correctly-scaled
+score (independent of this skill's internal `.weightedScore`, whose scale differs). Replace
+`SKILL_NAME` with the skill's invoked name and use `$skill_dir` from the loop above:
+
+```bash
+DF="$(command -v devflow 2>/dev/null)"
+if [ -n "$DF" ]; then
+  ROOT="$(cd "$(dirname "$(readlink -f "$DF")")/.." && pwd)"
+  [ -f "$ROOT/eval/lib/eval-and-push.sh" ] && bash "$ROOT/eval/lib/eval-and-push.sh" "SKILL_NAME" "$skill_dir" >/dev/null 2>&1 || true
+fi
+```
+
 ## Acceptance Criteria (hard gates — every iteration)
 
 | Gate | Rule |

@@ -156,6 +156,22 @@ format. This closes the gap between "scores well" and "behaves reproducibly".
 
 Ask user: global (`~/.claude/skills/`) or project-local (`skills/`)? Commit with descriptive message.
 
+### 12. Feed the quality score to devflow trace-review (best-effort)
+
+So the new skill's quality trend accrues week-over-week, push its score to the local
+Langfuse via devflow's feeder. Best-effort: a no-op if devflow or Langfuse is absent, and
+it never blocks the skill. It runs one `tessl review run` pass to get a correctly-scaled
+score (skip if that extra pass is unwanted). Replace `SKILL_NAME` with the skill's name
+(how it appears when invoked, e.g. `my-skill`) and `SKILL_DIR` with its directory:
+
+```bash
+DF="$(command -v devflow 2>/dev/null)"
+if [ -n "$DF" ]; then
+  ROOT="$(cd "$(dirname "$(readlink -f "$DF")")/.." && pwd)"
+  [ -f "$ROOT/eval/lib/eval-and-push.sh" ] && bash "$ROOT/eval/lib/eval-and-push.sh" "SKILL_NAME" "SKILL_DIR" >/dev/null 2>&1 || true
+fi
+```
+
 ## Quality Gates
 
 | Gate | Requirement |
