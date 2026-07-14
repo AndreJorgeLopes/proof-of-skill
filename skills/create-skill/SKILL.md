@@ -150,7 +150,12 @@ format. This closes the gap between "scores well" and "behaves reproducibly".
 
 ### 10. Validation
 
-**First verify auth:** run `tessl whoami`; if it reports "not logged in", stop and tell the user to run `tessl login` (browser auth — cannot be automated), then resume. Then run `tessl review run` for static quality score (add `--threshold 85` to fail fast below 85%; in headless/`--json` mode also pass `--workspace <name>` — tessl 0.87 requires it, list via `tessl workspace list`, and read the score from `.review.reviewScore`). Run `tessl eval run` for empirical score. If score < 85%, invoke `optimize-skill` (Tessl-gated loop with snapshot+revert protection — never accepts a worse score — plus a final spec-review pass that catches correctness regressions the score doesn't, e.g. broken bundle refs or hallucinated syntax from the auto-optimizer). Re-run until passing.
+**The eval is MANDATORY and must never be deferred** (not for context budget, not for "the skill is simple"). If context is tight, start a fresh session and run it there. Skipping it ships unvalidated, load-breaking defects (see the rationalization table).
+
+**First, validate the frontmatter parses as YAML** (a single unquoted `: ` in the description silently breaks the whole block and tessl will report `frontmatter_valid` FAILED with score N/A):
+`ruby -ryaml -e 'YAML.safe_load(File.read(ARGV[0], encoding: "UTF-8").split(/^---\s*$/)[1]); puts "frontmatter OK"' skills/<name>/SKILL.md` (UTF-8 read + line-anchored split so emojis/small-caps do not trip it; or run the devflow `make skills-check` gate, which now enforces this). Fix before scoring.
+
+**Then verify auth:** run `tessl whoami`; if it reports "not logged in", stop and tell the user to run `tessl login` (browser auth — cannot be automated), then resume. Then run `tessl review run` for static quality score (add `--threshold 85` to fail fast below 85%; in headless/`--json` mode also pass `--workspace <name>` — tessl 0.87 requires it, list via `tessl workspace list`, and read the score from `.review.reviewScore`). Run `tessl eval run` for empirical score. If score < 85%, invoke `optimize-skill` (Tessl-gated loop with snapshot+revert protection — never accepts a worse score — plus a final spec-review pass that catches correctness regressions the score doesn't, e.g. broken bundle refs or hallucinated syntax from the auto-optimizer). Re-run until passing.
 
 ### 11. Save + Commit
 
@@ -181,8 +186,9 @@ fi
 | RED baseline | 3+ scenarios run without skill |
 | GREEN verify | All scenarios pass with skill |
 | Determinism pass | determinize-skill run; ROI-top fixes applied; assertions written |
+| Frontmatter valid | SKILL.md frontmatter parses as YAML (no unquoted `: ` in the description) |
 | tessl review | Static review completed |
-| tessl eval | Score >= 85% |
+| tessl eval | Score >= 85% (run this session, never deferred) |
 | optimize-skill | Run if < 85% (or to lift score); spec-review surfaces no Critical |
 
 ## Rationalizations & Red Flags
@@ -199,6 +205,8 @@ Any of these thoughts mean **STOP — delete what you wrote — start over**:
 | "I'll make it comprehensive to compensate" | Generic checklists = average neighborhood. Specificity wins. |
 | "User asked for one skill, so one skill" | Multi-concern → decompose. Ask first. |
 | "I already know what this should do" | Domain knowledge != agent needs. Interview. |
+| "I'm low on context, I'll defer the eval / tessl" | NEVER defer the eval. It is the gate that catches load-breaking defects (real case 2026-07-14: an unquoted `: ` in the description broke the YAML frontmatter; only tessl caught it, score N/A). If context is tight, start a FRESH session and run it there. Deferring == shipping unvalidated. |
+| "The frontmatter is fine, it is just text" | A SKILL.md `description` is a single YAML line. An unquoted `: ` (colon-space), `#`, or leading `[`/`{` silently breaks the whole frontmatter. Validate it parses as YAML before committing. |
 
 **Also stop if:** writing SKILL.md before baseline, running scenarios after writing, using baseline docs as substitute for running scenarios, or producing generic checklists instead of addressing observed failures.
 
