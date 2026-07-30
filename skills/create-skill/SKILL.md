@@ -85,6 +85,8 @@ Ask ONE question at a time. Wait for answer before next question. Minimum 3 ques
 
 **Do NOT proceed to Discovery until you have asked at least 3 questions and received answers.**
 
+> **Preference (André):** where the questions have discrete/enumerable options, bundle them into one `AskUserQuestion` round (chip/tag selector, multi-question) rather than sequential one-at-a-time free-text prompts. Reserve one-at-a-time free-text for genuinely open-ended questions that don't fit a selector.
+
 ### 4. Discovery (MANDATORY — search before create)
 
 Search ALL of these locations:
