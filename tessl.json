@@ -1,5 +1,5 @@
 {
   "name": "proof-of-skill",
   "version": "0.1.0",
-  "skills": ["skills/create-skill", "skills/write-spike"]
+  "skills": ["skills/create-skill", "skills/write-spike", "skills/monitor-skill"]
 }
