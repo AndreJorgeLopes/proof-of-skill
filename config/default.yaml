@@ -1,0 +1,34 @@
+# proof-of-skill default configuration
+# Override per-skill values in ~/.proof-of-skill/monitored-skills.json
+
+sampling:
+  # 1-in-N invocations are sampled for eval
+  rate: 20
+  # Minimum seconds between evals for the same skill (debounce)
+  min_interval_seconds: 300
+
+eval:
+  # Default quality threshold (percentage)
+  threshold: 85
+  # Eval mode: --quick for sampling, --full for scheduled runs
+  mode: quick
+  # Maximum eval duration before timeout (seconds)
+  timeout: 120
+
+storage:
+  # Base directory for all proof-of-skill data
+  base_dir: ~/.proof-of-skill
+  # Metrics database filename (SQLite)
+  db_file: metrics.db
+  # Scores log (append-only, pre-SQLite fallback)
+  scores_log: scores.jsonl
+  # Degradation events log
+  degradations_log: degradations.jsonl
+
+notifications:
+  # Whether to notify on degradation
+  enabled: true
+  # Minimum score drop to trigger notification
+  min_drop: 10
+  # Cooldown between notifications for the same skill (seconds)
+  cooldown_seconds: 3600
