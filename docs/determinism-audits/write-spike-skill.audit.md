@@ -1,5 +1,7 @@
 ## Determinism Audit: write-spike
 
+> **Historical.** write-spike now ships only from [devflow](https://github.com/AndreJorgeLopes/devflow) (`skills/write-spike/`); this audit documents the factory's original determinism pass and is not re-run against the shipped copy.
+
 ### Findings
 
 | ID | Location | Axis | Severity | Effort | Nondeterminism | Deterministic fix |

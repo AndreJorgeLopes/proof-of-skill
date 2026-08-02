@@ -1,8 +1,13 @@
 # proof-of-skill — project instructions
 
 A skill factory: `create-skill` (TDD authoring), `optimize-skill` (tessl-gated Ralph
-loop), `determinize-skill` (determinism audit), `write-spike`, and a shared
+loop), `determinize-skill` (determinism audit), and a shared
 `lib/determinism/` function library. Skills are markdown; tessl scores them.
+
+`write-spike` was authored and evaluated here (RED/GREEN history in
+`docs/eval/write-spike-*.md` and `docs/determinism-audits/write-spike-skill.audit.md`)
+but ships only from [devflow](https://github.com/AndreJorgeLopes/devflow)
+(`skills/write-spike/`) — no `skills/write-spike/` dir exists in this repo.
 
 ## tessl 0.87 command surface (verified — do not regress)
 

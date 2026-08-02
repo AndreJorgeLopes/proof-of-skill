@@ -1,5 +1,7 @@
 # Write-Spike Pressure Scenarios
 
+> **Historical.** write-spike now ships only from [devflow](https://github.com/AndreJorgeLopes/devflow) (`skills/write-spike/`); these are the original RED-phase pressure scenarios.
+
 These scenarios test whether an agent can produce high-quality spike documents WITHOUT dedicated `/write-spike` skill guidance. Each scenario targets specific failure modes that the skill must address.
 
 ## Scenario 1: Minimal Input (Just a Ticket ID)

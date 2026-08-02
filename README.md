@@ -8,7 +8,7 @@
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 [![Claude Code](https://img.shields.io/badge/Claude_Code-Skills-7c3aed.svg)](skills/)
-[![Skills](https://img.shields.io/badge/Skills-2_shipped-059669.svg)](skills/)
+[![Skills](https://img.shields.io/badge/Skills-1_shipped-059669.svg)](skills/)
 [![Eval Score](https://img.shields.io/badge/Eval_Score-86%25-f59e0b.svg)](docs/eval/)
 [![Baseline](https://img.shields.io/badge/Baseline-2--7%25-ef4444.svg)](docs/eval/create-skill-baseline.md)
 
@@ -274,43 +274,11 @@ Creates a new skill through a structured TDD process. Enforces **interview, disc
 | **GREEN** | Minimal SKILL.md, verify all pass | Targeted fixes (agent writes *generic checklists*) |
 | **REFACTOR** | tessl eval >= 85% | Empirical quality (agent ships at *7%*) |
 
-### `/write-spike`: Technical Investigation
-
-Conducts a **4-phase** technical investigation producing both a spike document and a private notes file. Pulls context from Jira, Slack, Hindsight, and the codebase *in parallel* before engaging the user.
-
-```
-/write-spike                               # starts from scratch
-/write-spike MES-3899                      # starts from Jira ticket
-/write-spike MES-3899 Channel: C0APSFH0LJ3  # with additional context
-```
-
-**4 Phases:**
-
-```mermaid
-flowchart LR
-    P1["Phase 1\nContext Assembly\n(automated, parallel)"]
-    P2["Phase 2\nKnowledge Building\n(interactive)"]
-    P3["Phase 3\nDocument Generation\n(spike + private notes)"]
-    P4["Phase 4\nValidation\n(grill-me + retain)"]
-
-    P1 --> P2 --> P3 --> P4
-
-    style P1 fill:#1e3a5f,color:#fff
-    style P2 fill:#2d1b69,color:#fff
-    style P3 fill:#1a4d2e,color:#fff
-    style P4 fill:#5c3d1a,color:#fff
-```
-
-| Phase | What Happens | Output |
-|:-----:|-------------|--------|
-| **1. Context Assembly** | 4 parallel agents gather from Jira, Hindsight, Slack, and external docs. Codebase discovery maps spike goals to repos. | *Unified context from all sources* |
-| **2. Knowledge Building** | Classify every goal: **Known** / **Can-Investigate** / **Need-Others**. Present options for significant decisions. Build delegation guide. | *Knowledge classification + investigation backlog* |
-| **3. Document Generation** | Structured spike doc with Mermaid diagrams, effort estimates, cross-team dependencies. Plus **private notes** with delegation guide and contact confidence. | *Two files: spike doc + private notes* |
-| **4. Validation** | Self-review, grill-me stress test, B1 investigation execution, retain learnings to Hindsight. | *Validated, stress-tested document* |
-
-**What it produces:**
-- **Spike document.** Structured investigation with architecture diagrams, knowledge classification (Known/Can-Investigate/Need-Others), effort estimates, cross-team dependencies, testing strategy, and phasing.
-- **Private notes** (dot-prefixed). Delegation guide, contact confidence table, low-confidence assumptions, things to discuss with manager. *Never shared with the team.*
+> `/write-spike` (4-phase technical investigation framework) was authored and
+> evaluated in this repo but now ships only from
+> [devflow](https://github.com/AndreJorgeLopes/devflow) (`skills/write-spike/`).
+> Its RED/GREEN research history stays here: `docs/eval/write-spike-*.md`,
+> `docs/determinism-audits/write-spike-skill.audit.md`.
 
 ---
 
@@ -325,14 +293,6 @@ The eval suite uses **pressure scenarios** designed to expose specific failure m
 | 1 | "Create a skill for code review" | Vague + familiar domain | Does the agent **interview** or assume? |
 | 2 | "DB migrations + Slack + Jira in one skill" | Multi-concern + multiple tools | Does the agent **decompose** or create a monolith? |
 | 3 | "Writing implementation plans" | Direct overlap with existing skill | Does the agent **discover** or duplicate? |
-
-### Write-Spike Pressure Scenarios
-
-| # | Scenario | Pressures | What It Tests |
-|:-:|----------|-----------|--------------|
-| 1 | "Write spike for MES-3899" | Minimal input, real Jira ticket | Does the agent **investigate** or paraphrase the ticket? |
-| 2 | No Jira ticket, free-text only | Missing structured input | Does the agent **compensate** with Slack/Hindsight/codebase? |
-| 3 | 10 goals, 7 services, 3 external deps | Scale + complexity | Does the agent **flag scope** or plow through? |
 
 ### Running Evals
 
@@ -367,7 +327,7 @@ proof-of-skill builds on four tools that form the validation, memory, and optimi
 | [**devflow**](https://github.com/AndreJorgeLopes/devflow) | AI dev environment | Provides persistent memory (Hindsight), session management (agent-deck), code review, and observability |
 | [**Hindsight**](https://github.com/vectorize-io/hindsight) | Persistent memory | 3-tier memory system (mental models, observations, facts) for recalling past skill creation learnings across sessions |
 
-> **How the pieces fit together:** [devflow](https://github.com/AndreJorgeLopes/devflow) runs and manages the [Hindsight](https://github.com/vectorize-io/hindsight) memory daemon, provides the `devflow:retain-learning` skill for persisting discoveries, and orchestrates [agent-deck](https://github.com/asheshgoplani/agent-deck) sessions for background optimization. proof-of-skill *consumes* these capabilities through its skills. The `/create-skill` workflow queries Hindsight for past learnings before starting, and the `/write-spike` workflow uses devflow's codebase walkthrough and memory recall during context assembly.
+> **How the pieces fit together:** [devflow](https://github.com/AndreJorgeLopes/devflow) runs and manages the [Hindsight](https://github.com/vectorize-io/hindsight) memory daemon, provides the `devflow:retain-learning` skill for persisting discoveries, and orchestrates [agent-deck](https://github.com/asheshgoplani/agent-deck) sessions for background optimization. proof-of-skill *consumes* these capabilities through its skills. The `/create-skill` workflow queries Hindsight for past learnings before starting.
 
 ### v1.0 Architecture (planned)
 
@@ -375,7 +335,6 @@ proof-of-skill builds on four tools that form the validation, memory, and optimi
 graph TD
     subgraph CREATE ["Skill Creation"]
         CS["/create-skill"]
-        WS["/write-spike"]
     end
 
     subgraph VALIDATE ["Validation"]
@@ -402,9 +361,7 @@ graph TD
     end
 
     CS --> TE
-    WS --> TE
     CS --> HS
-    WS --> HS
     TE --> RL
     RL --> TE
 
@@ -434,7 +391,6 @@ See `tasks/` for the full v1.0 roadmap as Nimbalist task files with detailed imp
 | Priority | Feature | Description | Status |
 |:--------:|---------|-------------|:------:|
 | | `/create-skill` | TDD skill creation with empirical validation | **Shipped** |
-| | `/write-spike` | 4-phase technical investigation framework | **Shipped** |
 | **P1** | `/monitor-skill` | Register existing skills for p95 quality sampling | Planned |
 | **P1** | p95 hooks | Shell hooks that sample 1-in-N invocations, run tessl eval | Planned |
 | **P1** | SQLite metrics store | `~/.proof-of-skill/metrics.db` for trend analysis | Planned |
@@ -456,17 +412,15 @@ proof-of-skill/
 ├── tessl.json                             # Skill registry for eval
 │
 ├── skills/
-│   ├── create-skill/
-│   │   └── SKILL.md                       # TDD skill creation (86% eval score)
-│   └── write-spike/
-│       └── SKILL.md                       # Technical investigation framework
+│   └── create-skill/
+│       └── SKILL.md                       # TDD skill creation (86% eval score)
 │
 ├── docs/
 │   ├── eval/
 │   │   ├── create-skill-scenarios.md      # 3 pressure scenarios
 │   │   ├── create-skill-baseline.md       # RED phase baseline failures
-│   │   ├── write-spike-scenarios.md       # 3 pressure scenarios
-│   │   └── write-spike-baseline.md        # RED phase baseline failures
+│   │   ├── write-spike-scenarios.md       # 3 pressure scenarios (historical — skill ships via devflow)
+│   │   └── write-spike-baseline.md        # RED phase baseline failures (historical — skill ships via devflow)
 │   └── images/
 │       ├── title.png                      # Project title banner
 │       ├── capability-space.png           # Capability space concept
