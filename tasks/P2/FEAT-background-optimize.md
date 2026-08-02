@@ -3,7 +3,9 @@ id: FEAT-background-optimize
 title: "Background optimization sessions via agent-deck"
 priority: P2
 category: features
-status: open
+status: reviewed
+pr: "#9"
+review: "APPROVE — 2 MEDIUM (in-memory tracking, platform-fragile command detection). Follow-up task created for persistence."
 depends_on:
   - FEAT-non-disruptive-notify
 estimated_effort: L

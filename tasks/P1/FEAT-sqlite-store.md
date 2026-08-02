@@ -3,7 +3,9 @@ id: FEAT-sqlite-store
 title: "Embedded SQLite metrics store"
 priority: P1
 category: features
-status: open
+status: reviewed
+pr: "#5"
+review: "APPROVE — all 12 acceptance criteria met, 5 LOW suggestions for follow-up"
 depends_on:
   - FEAT-p95-hooks
 estimated_effort: M

@@ -3,7 +3,9 @@ id: FEAT-p95-hooks
 title: "p95 sampling hooks for skill completions"
 priority: P1
 category: features
-status: open
+status: reviewed
+pr: "#16"
+review: "REQUEST_CHANGES — 2 HIGH (tmpfile race, missing install script), 1 MEDIUM (sanitized name in JSON). Fixes pushed May 11."
 depends_on:
   - FEAT-monitor-skill
 estimated_effort: M

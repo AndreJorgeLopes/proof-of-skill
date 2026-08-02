@@ -3,7 +3,9 @@ id: FEAT-langfuse-adapter
 title: "Langfuse adapter for observability traces"
 priority: P2
 category: features
-status: open
+status: reviewed
+pr: "#8"
+review: "REQUEST_CHANGES — 1 HIGH (no dual-write in MetricsStore). Fix pushed May 11."
 depends_on:
   - FEAT-sqlite-store
 estimated_effort: M

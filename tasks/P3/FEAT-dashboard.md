@@ -3,7 +3,9 @@ id: FEAT-dashboard
 title: "Local static dashboard for skill quality metrics"
 priority: P3
 category: features
-status: open
+status: reviewed
+pr: "#11"
+review: "REQUEST_CHANGES — 1 CRITICAL (near-miss logic inverted), 1 HIGH (path traversal risk). Fixes pushed May 11."
 depends_on:
   - FEAT-sqlite-store
 estimated_effort: M

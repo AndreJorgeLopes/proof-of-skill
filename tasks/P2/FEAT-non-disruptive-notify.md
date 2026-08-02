@@ -3,7 +3,9 @@ id: FEAT-non-disruptive-notify
 title: "Non-disruptive degradation notifications"
 priority: P2
 category: features
-status: open
+status: reviewed
+pr: "#7"
+review: "REQUEST_CHANGES — 1 MEDIUM (NO_COLOR at import time), 2 LOW. Fixes pushed May 11."
 depends_on:
   - FEAT-p95-hooks
 estimated_effort: M

@@ -3,7 +3,9 @@ id: DOCS-contributing
 title: "Contributing guide with skill authoring, eval writing, and PR process"
 priority: P3
 category: docs
-status: open
+status: reviewed
+pr: "#3"
+review: "APPROVE — all 11 acceptance criteria met, 2 LOW stylistic items only"
 depends_on:
   - DOCS-readme
 estimated_effort: S
