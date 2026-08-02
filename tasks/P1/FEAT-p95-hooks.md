@@ -3,7 +3,8 @@ id: FEAT-p95-hooks
 title: "p95 sampling hooks for skill completions"
 priority: P1
 category: features
-status: open
+status: in-review
+pr: "#16 (canonical), #4 (superseded)"
 depends_on:
   - FEAT-monitor-skill
 estimated_effort: M
