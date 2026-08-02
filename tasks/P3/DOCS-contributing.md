@@ -3,7 +3,8 @@ id: DOCS-contributing
 title: "Contributing guide with skill authoring, eval writing, and PR process"
 priority: P3
 category: docs
-status: open
+status: in-review
+pr: "#3"
 depends_on:
   - DOCS-readme
 estimated_effort: S
