@@ -3,6 +3,8 @@
 Date: 2026-04-09
 Method: Each scenario run as a naive agent with ONLY the raw prompt -- no `/create-skill` skill, no TDD guidance, no interview protocol loaded.
 
+> **Historical snapshot.** This baseline captures the repo layout at the time of the run. References below to `skills/write-spike/` and `tessl.json` entries for write-spike no longer match the current repo state, because write-spike now ships from [devflow](https://github.com/AndreJorgeLopes/devflow).
+
 ---
 
 ## Scenario 1: "Create a skill for code review"

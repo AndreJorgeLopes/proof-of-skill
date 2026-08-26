@@ -1,6 +1,6 @@
 ## Determinism Audit: write-spike
 
-> **Historical.** write-spike now ships only from [devflow](https://github.com/AndreJorgeLopes/devflow) (`skills/write-spike/`); this audit documents the factory's original determinism pass and is not re-run against the shipped copy.
+> **Historical.** write-spike now ships only from [devflow](https://github.com/AndreJorgeLopes/devflow) (`skills/write-spike/`); this audit documents the factory's original determinism pass and is not re-run against the shipped copy. Repo-local paths and run commands below (for example `skills/write-spike/` and `promptfoo eval` from that directory) may no longer be valid in this repository.
 
 ### Findings
 
