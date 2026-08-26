@@ -1,5 +1,7 @@
 # Write-Spike Baseline Behavior (RED Phase)
 
+> **Historical.** write-spike now ships only from [devflow](https://github.com/AndreJorgeLopes/devflow) (`skills/write-spike/`); this is the RED-phase baseline that motivated the original skill.
+
 Date: 2026-04-09
 Method: Each scenario analyzed as a naive agent with ONLY the raw prompt -- no `/write-spike` skill, no spike template, no interview protocol loaded. The agent has access to Jira (Atlassian Rovo MCP), Slack MCP, Hindsight, and normal tools.
 
